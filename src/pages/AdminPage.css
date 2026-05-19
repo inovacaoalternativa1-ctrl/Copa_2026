@@ -1,6 +1,32 @@
 .admin-section {}
 .section-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--blue2); margin-bottom: 16px; letter-spacing: 0.5px; }
 
+/* ── Media drop zone (reused from NewsPage) ── */
+.media-drop-zone {
+  border: 2px dashed var(--line); border-radius: 14px; background: #f8faff;
+  cursor: pointer; transition: border-color .15s, background .15s;
+  overflow: hidden; min-height: 130px; display: flex; align-items: center; justify-content: center;
+}
+.media-drop-zone:hover:not(.uploading) { border-color: var(--blue); background: rgba(0,74,173,.03); }
+.media-drop-zone.drag-over { border-color: var(--blue); background: rgba(0,74,173,.06); border-style: solid; }
+.media-drop-zone.uploading { cursor: default; }
+.media-dz-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 20px; text-align: center; }
+.media-dz-icon { font-size: 32px; line-height: 1; margin-bottom: 2px; }
+.media-dz-empty strong { font-size: 14px; color: var(--text); font-weight: 700; }
+.media-dz-empty span { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.media-dz-uploading { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px; color: var(--muted); font-size: 14px; font-weight: 600; }
+.spinner-sm { width: 22px; height: 22px; border: 2.5px solid var(--line); border-top-color: var(--blue); border-radius: 50%; animation: spinSm .65s linear infinite; }
+@keyframes spinSm { to { transform: rotate(360deg); } }
+.media-dz-preview { position: relative; width: 100%; }
+.media-preview-el { width: 100%; max-height: 220px; object-fit: cover; display: block; border-radius: 12px; }
+.media-dz-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; gap: 10px; opacity: 0; transition: opacity .18s; border-radius: 12px; }
+.media-dz-preview:hover .media-dz-overlay { opacity: 1; }
+.media-dz-btn { background: white; border: none; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 700; cursor: pointer; transition: background .15s; }
+.media-dz-btn:hover { background: #f0f0f0; }
+.media-dz-btn.danger { color: var(--red); }
+.media-dz-btn.danger:hover { background: #fff0f0; }
+.media-upload-err { font-size: 13px; color: var(--red); margin: 6px 0 0; }
+
 /* ── ESPN Sync bar ── */
 .sync-bar {
   display: flex; align-items: center; justify-content: space-between;

@@ -6,6 +6,7 @@ import {
   adminGetSponsors, adminUpsertSponsor, adminDeleteSponsor,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import supabase from '../services/supabase';
 import './AdminPage.css';
 
 const PHASE_LABELS = {
@@ -105,8 +106,50 @@ export default function AdminPage() {
   const [sponsorEditing, setSponsorEditing] = useState(false);
   const [sponsorSaving, setSponsorSaving] = useState(false);
   const [sponsorError, setSponsorError] = useState('');
+  const [logoPreview, setLogoPreview] = useState(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoUploadErr, setLogoUploadErr] = useState('');
+  const [logoDragOver, setLogoDragOver] = useState(false);
+  const logoFileRef = useRef(null);
 
   const loadSponsors = () => adminGetSponsors().then(({ data }) => setSponsors(data || []));
+
+  const compressLogo = (file) => new Promise((resolve) => {
+    const img = new Image();
+    const objUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objUrl);
+      const MAX = 800;
+      let { width, height } = img;
+      if (width > MAX)  { height = Math.round(height * MAX / width); width = MAX; }
+      if (height > MAX) { width = Math.round(width * MAX / height); height = MAX; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(resolve, 'image/png', 1);
+    };
+    img.src = objUrl;
+  });
+
+  const uploadLogo = async (file) => {
+    if (!file.type.startsWith('image/')) { setLogoUploadErr('Somente imagens (JPG, PNG, SVG...).'); return; }
+    setLogoUploadErr('');
+    setLogoPreview(URL.createObjectURL(file));
+    setLogoUploading(true);
+    const compressed = await compressLogo(file);
+    const path = `sponsors/${user.id}/${Date.now()}.png`;
+    const { error } = await supabase.storage.from('post-media').upload(path, compressed, { contentType: 'image/png', upsert: false });
+    if (error) { setLogoUploadErr(`Erro: ${error.message}`); setLogoUploading(false); return; }
+    const { data: urlData } = supabase.storage.from('post-media').getPublicUrl(path);
+    setSponsorForm(f => ({ ...f, logo_url: urlData.publicUrl }));
+    setLogoUploading(false);
+  };
+
+  const clearLogo = () => {
+    setLogoPreview(null); setLogoUploadErr('');
+    setSponsorForm(f => ({ ...f, logo_url: '' }));
+    if (logoFileRef.current) logoFileRef.current.value = '';
+  };
 
   // Keep a ref to matches to use inside the interval without stale closure
   const matchesRef = useRef(matches);
@@ -780,9 +823,15 @@ export default function AdminPage() {
       {tab === 'parceiros' && (() => {
         const EMPTY_SP = { id: null, name: '', logo_url: '', website_url: '', order_index: sponsors.length, is_active: true };
 
-        const openNew = () => { setSponsorForm(EMPTY_SP); setSponsorEditing(true); setSponsorError(''); };
-        const openEdit = (s) => { setSponsorForm({ ...s }); setSponsorEditing(true); setSponsorError(''); };
-        const cancelEdit = () => { setSponsorEditing(false); setSponsorError(''); };
+        const openNew = () => {
+          setSponsorForm(EMPTY_SP); setSponsorEditing(true); setSponsorError('');
+          setLogoPreview(null); setLogoUploadErr('');
+        };
+        const openEdit = (s) => {
+          setSponsorForm({ ...s }); setSponsorEditing(true); setSponsorError('');
+          setLogoPreview(s.logo_url || null); setLogoUploadErr('');
+        };
+        const cancelEdit = () => { setSponsorEditing(false); setSponsorError(''); clearLogo(); };
 
         const saveSponsor = async () => {
           if (!sponsorForm.name.trim())     { setSponsorError('Nome obrigatório.'); return; }
@@ -836,12 +885,42 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="form-group" style={{ marginTop: 12 }}>
-                  <label>URL da Logo * <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 400 }}>(cole o link da imagem — use Supabase Storage &gt; post-media)</span></label>
-                  <input type="url" value={sponsorForm.logo_url} placeholder="https://..."
-                    onChange={e => setSponsorForm(f => ({ ...f, logo_url: e.target.value }))} />
+                  <label>Logo do Parceiro *</label>
+                  <div
+                    className={`media-drop-zone${logoDragOver ? ' drag-over' : ''}${logoUploading ? ' uploading' : ''}`}
+                    style={{ minHeight: 110 }}
+                    onClick={() => !logoUploading && logoFileRef.current?.click()}
+                    onDrop={e => { e.preventDefault(); setLogoDragOver(false); const f = e.dataTransfer.files[0]; if (f) uploadLogo(f); }}
+                    onDragOver={e => { e.preventDefault(); setLogoDragOver(true); }}
+                    onDragLeave={() => setLogoDragOver(false)}
+                  >
+                    {logoUploading ? (
+                      <div className="media-dz-uploading">
+                        <div className="spinner-sm" />
+                        <span>Enviando logo...</span>
+                      </div>
+                    ) : logoPreview ? (
+                      <div className="media-dz-preview">
+                        <img src={logoPreview} className="media-preview-el" alt="logo" style={{ maxHeight: 100, objectFit: 'contain', background: '#f8f8f8' }} />
+                        <div className="media-dz-overlay">
+                          <button className="media-dz-btn" onClick={e => { e.stopPropagation(); logoFileRef.current?.click(); }}>🔄 Trocar</button>
+                          <button className="media-dz-btn danger" onClick={e => { e.stopPropagation(); clearLogo(); }}>🗑️ Remover</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="media-dz-empty">
+                        <div className="media-dz-icon">🖼️</div>
+                        <strong>Clique ou arraste a logo aqui</strong>
+                        <span>PNG, JPG, SVG · Fundo transparente recomendado</span>
+                      </div>
+                    )}
+                  </div>
+                  {logoUploadErr && <p className="media-upload-err">{logoUploadErr}</p>}
+                  <input ref={logoFileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={e => { const f = e.target.files[0]; if (f) uploadLogo(f); }} />
                 </div>
                 <div className="form-group" style={{ marginTop: 12 }}>
-                  <label>Site do Parceiro <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 400 }}>(opcional)</span></label>
+                  <label>Site do Parceiro <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 400 }}>(opcional — clique na logo leva para este site)</span></label>
                   <input type="url" value={sponsorForm.website_url} placeholder="https://..."
                     onChange={e => setSponsorForm(f => ({ ...f, website_url: e.target.value }))} />
                 </div>
@@ -850,12 +929,6 @@ export default function AdminPage() {
                     onChange={e => setSponsorForm(f => ({ ...f, is_active: e.target.checked }))} />
                   <span>Ativo (visível no navbar)</span>
                 </label>
-                {sponsorForm.logo_url && (
-                  <div style={{ marginTop: 14, padding: 12, background: 'var(--bg)', borderRadius: 10 }}>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, marginBottom: 8 }}>PRÉVIA</div>
-                    <img src={sponsorForm.logo_url} alt="preview" style={{ height: 40, objectFit: 'contain', maxWidth: 160 }} />
-                  </div>
-                )}
                 {sponsorError && <div className="alert alert-error" style={{ marginTop: 12 }}>{sponsorError}</div>}
                 <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
                   <button className="btn btn-soft btn-sm" onClick={cancelEdit}>Cancelar</button>
