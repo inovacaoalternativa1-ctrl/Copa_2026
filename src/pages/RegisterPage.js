@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import './AuthPage.css';
 
 export default function RegisterPage() {
-  const [form, setForm] = useState({ username:'', full_name:'', email:'', password:'', whatsapp:'', cpf:'', city:'', state:'', instagram:'', terms: false });
+  const [form, setForm] = useState({ username:'', full_name:'', email:'', password:'', whatsapp:'', city:'', state:'', instagram:'', terms: false });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
@@ -58,10 +58,7 @@ export default function RegisterPage() {
                 <div className="form-group"><label>Email *</label><input type="email" value={form.email} onChange={e=>set('email',e.target.value)} placeholder="seu@email.com" required /></div>
                 <div className="form-group"><label>Senha *</label><input type="password" value={form.password} onChange={e=>set('password',e.target.value)} placeholder="Mínimo 6 caracteres" required /></div>
               </div>
-              <div className="form-row">
-                <div className="form-group"><label>WhatsApp *</label><input value={form.whatsapp} onChange={e=>set('whatsapp',e.target.value)} placeholder="(11) 99999-9999" required /></div>
-                <div className="form-group"><label>CPF <span className="optional">(opcional para premiação)</span></label><input value={form.cpf} onChange={e=>set('cpf',e.target.value)} placeholder="000.000.000-00" /></div>
-              </div>
+              <div className="form-group"><label>WhatsApp *</label><input value={form.whatsapp} onChange={e=>set('whatsapp',e.target.value)} placeholder="(11) 99999-9999" required /></div>
               <div className="form-row">
                 <div className="form-group"><label>Cidade *</label><input value={form.city} onChange={e=>set('city',e.target.value)} placeholder="São Paulo" required /></div>
                 <div className="form-group"><label>Estado *</label>
