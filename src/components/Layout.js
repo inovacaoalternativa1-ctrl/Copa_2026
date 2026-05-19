@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
-import { getSponsors } from '../services/api';
 import './Layout.css';
 
 const getInitials = (name = '') => {
@@ -25,11 +24,6 @@ export default function Layout() {
   const [savingUsername, setSavingUsername] = useState(false);
   const [usernameSaved, setUsernameSaved] = useState(false);
   const fileInputRef = useRef(null);
-  const [sponsors, setSponsors] = useState([]);
-
-  useEffect(() => {
-    getSponsors().then(({ data }) => setSponsors(data || []));
-  }, []);
 
   const handleSignOut = async () => { await signOut(); navigate('/login'); };
 
@@ -171,21 +165,8 @@ export default function Layout() {
             <NavLink to="/ranking" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>🏆 Ranking</NavLink>
             <NavLink to="/chat" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>💬 Chat</NavLink>
             <NavLink to="/noticias" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>📰 Notícias</NavLink>
+            <NavLink to="/parceiros" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>🤝 Parceiros</NavLink>
             {isAdmin && <NavLink to="/admin" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>⚙️ Admin</NavLink>}
-            {sponsors.length > 0 && (
-              <div className="nav-sponsors">
-                <span className="nav-sponsors-label">Parceiros</span>
-                {sponsors.map(s => (
-                  s.website_url
-                    ? <a key={s.id} href={s.website_url} target="_blank" rel="noopener noreferrer" className="nav-sponsor-item" title={s.name}>
-                        <img src={s.logo_url} alt={s.name} />
-                      </a>
-                    : <span key={s.id} className="nav-sponsor-item" title={s.name}>
-                        <img src={s.logo_url} alt={s.name} />
-                      </span>
-                ))}
-              </div>
-            )}
           </nav>
 
           <div className="nav-user">

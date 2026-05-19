@@ -1,0 +1,148 @@
+.partners-page {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.partners-loading {
+  display: flex;
+  justify-content: center;
+  padding: 80px;
+}
+
+.partners-hero {
+  text-align: center;
+  padding: 40px 20px 36px;
+}
+
+.partners-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 48px;
+  color: var(--blue2);
+  letter-spacing: 2px;
+  margin: 0 0 10px;
+}
+
+.partners-subtitle {
+  font-size: 16px;
+  color: var(--muted);
+  font-weight: 600;
+  margin: 0;
+}
+
+.partners-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 80px 20px;
+  color: var(--muted);
+  font-size: 15px;
+}
+
+.partners-empty-icon {
+  font-size: 48px;
+}
+
+.partners-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 24px;
+  padding: 0 0 48px;
+}
+
+.partner-card {
+  background: white;
+  border: 1.5px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(6, 44, 100, 0.07);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.partner-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 32px rgba(6, 44, 100, 0.14);
+  border-color: var(--blue);
+}
+
+.partner-card-link,
+.partner-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 36px 24px 28px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.partner-logo-wrap {
+  width: 100%;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.partner-logo {
+  max-width: 100%;
+  max-height: 160px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+.partner-name {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.partner-visit {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue);
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+
+.partner-card:hover .partner-visit {
+  opacity: 1;
+}
+
+@media (max-width: 600px) {
+  .partners-title {
+    font-size: 36px;
+  }
+
+  .partners-subtitle {
+    font-size: 14px;
+  }
+
+  .partners-hero {
+    padding: 28px 16px 24px;
+  }
+
+  .partners-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .partner-logo-wrap {
+    height: 120px;
+  }
+
+  .partner-logo {
+    max-height: 120px;
+  }
+
+  .partner-card-link,
+  .partner-card-inner {
+    padding: 24px 16px 20px;
+    gap: 12px;
+  }
+}
