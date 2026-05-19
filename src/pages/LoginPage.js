@@ -62,6 +62,36 @@ export default function LoginPage() {
           playsInline
         />
         <div className="split-overlay" />
+
+        {/* ── MOBILE HERO (oculto no desktop) ── */}
+        <div className="mobile-login-hero">
+          <div className="mobile-brand-row">
+            <video
+              className="mobile-ava-video"
+              src="/videos/ava-copa-bandeira.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              disablePictureInPicture
+              controlsList="nodownload nofullscreen noremoteplayback"
+            />
+            <div className="mobile-brand-name">
+              <span className="mobile-brand-main">Alternativa</span>
+              <span className="mobile-brand-sub">Serviços</span>
+            </div>
+          </div>
+          <div className="mobile-copa-brand">
+            <span className="mobile-copa-title">Copa Simulada</span>
+            <span className="mobile-copa-year">2026</span>
+          </div>
+          <div className="mobile-copa-stats">
+            <div><strong>48</strong><span>Seleções</span></div>
+            <div><strong>64</strong><span>Jogos</span></div>
+            <div><strong>+500</strong><span>Participantes</span></div>
+          </div>
+        </div>
+
         <div className="split-card-wrapper">
           <div className="auth-card split-card">
             <h2>Entrar</h2>
