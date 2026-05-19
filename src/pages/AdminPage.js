@@ -920,8 +920,8 @@ export default function AdminPage() {
                     onChange={e => { const f = e.target.files[0]; if (f) uploadLogo(f); }} />
                 </div>
                 <div className="form-group" style={{ marginTop: 12 }}>
-                  <label>Site do Parceiro <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 400 }}>(opcional — clique na logo leva para este site)</span></label>
-                  <input type="url" value={sponsorForm.website_url} placeholder="https://..."
+                  <label>Link <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 400 }}>— opcional, pode adicionar depois · site, Instagram, WhatsApp…</span></label>
+                  <input type="text" value={sponsorForm.website_url} placeholder="Ex: https://instagram.com/singular.eng"
                     onChange={e => setSponsorForm(f => ({ ...f, website_url: e.target.value }))} />
                 </div>
                 <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 14, cursor: 'pointer' }}>
