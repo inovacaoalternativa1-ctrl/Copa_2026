@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   adminGetAllTypes, adminGetUsers, adminSetMatchResult, adminValidateExtra,
   adminGetMatchScorePredictions, adminGetMatchExtraPredictions,
-  adminGetExtraResults, getMatches
+  adminGetExtraResults, getMatches,
+  adminGetSponsors, adminUpsertSponsor, adminDeleteSponsor,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import './AdminPage.css';
@@ -98,6 +99,15 @@ export default function AdminPage() {
   const [viewError, setViewError] = useState(null);
   const [viewUser, setViewUser] = useState(null);
 
+  // Sponsors
+  const [sponsors, setSponsors] = useState([]);
+  const [sponsorForm, setSponsorForm] = useState({ id: null, name: '', logo_url: '', website_url: '', order_index: 0, is_active: true });
+  const [sponsorEditing, setSponsorEditing] = useState(false);
+  const [sponsorSaving, setSponsorSaving] = useState(false);
+  const [sponsorError, setSponsorError] = useState('');
+
+  const loadSponsors = () => adminGetSponsors().then(({ data }) => setSponsors(data || []));
+
   // Keep a ref to matches to use inside the interval without stale closure
   const matchesRef = useRef(matches);
   useEffect(() => { matchesRef.current = matches; }, [matches]);
@@ -105,9 +115,9 @@ export default function AdminPage() {
   const syncIntervalRef = useRef(null);
 
   useEffect(() => {
-    Promise.all([getMatches(), adminGetAllTypes(), adminGetUsers()])
-      .then(([{ data: m }, { data: t }, { data: u }]) => {
-        setMatches(m || []); setExtraTypes(t || []); setUsers(u || []);
+    Promise.all([getMatches(), adminGetAllTypes(), adminGetUsers(), adminGetSponsors()])
+      .then(([{ data: m }, { data: t }, { data: u }, { data: s }]) => {
+        setMatches(m || []); setExtraTypes(t || []); setUsers(u || []); setSponsors(s || []);
       }).finally(() => setLoading(false));
   }, []);
 
@@ -305,7 +315,7 @@ export default function AdminPage() {
       )}
 
       <div className="tabs" style={{ flexWrap: 'wrap' }}>
-        {[['results', '⚽ Resultados'], ['palpites', '📊 Palpites'], ['users', '👥 Usuários']].map(([k, l]) => (
+        {[['results', '⚽ Resultados'], ['palpites', '📊 Palpites'], ['users', '👥 Usuários'], ['parceiros', '🤝 Parceiros']].map(([k, l]) => (
           <button key={k} className={`tab-btn ${tab === k ? 'active' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -765,6 +775,133 @@ export default function AdminPage() {
           })()}
         </div>
       )}
+
+      {/* ===== PARCEIROS ===== */}
+      {tab === 'parceiros' && (() => {
+        const EMPTY_SP = { id: null, name: '', logo_url: '', website_url: '', order_index: sponsors.length, is_active: true };
+
+        const openNew = () => { setSponsorForm(EMPTY_SP); setSponsorEditing(true); setSponsorError(''); };
+        const openEdit = (s) => { setSponsorForm({ ...s }); setSponsorEditing(true); setSponsorError(''); };
+        const cancelEdit = () => { setSponsorEditing(false); setSponsorError(''); };
+
+        const saveSponsor = async () => {
+          if (!sponsorForm.name.trim())     { setSponsorError('Nome obrigatório.'); return; }
+          if (!sponsorForm.logo_url.trim()) { setSponsorError('URL da logo obrigatória.'); return; }
+          setSponsorSaving(true); setSponsorError('');
+          const payload = {
+            name: sponsorForm.name.trim(),
+            logo_url: sponsorForm.logo_url.trim(),
+            website_url: sponsorForm.website_url.trim() || null,
+            order_index: Number(sponsorForm.order_index) || 0,
+            is_active: sponsorForm.is_active,
+          };
+          if (sponsorForm.id) payload.id = sponsorForm.id;
+          const { error } = await adminUpsertSponsor(payload);
+          if (error) { setSponsorError(error.message); setSponsorSaving(false); return; }
+          await loadSponsors();
+          setSponsorEditing(false);
+          setSponsorSaving(false);
+        };
+
+        const deleteSponsor = async (id) => {
+          if (!window.confirm('Remover este parceiro?')) return;
+          await adminDeleteSponsor(id);
+          await loadSponsors();
+        };
+
+        return (
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h3 className="section-title" style={{ margin: 0 }}>Logos de Parceiros ({sponsors.length})</h3>
+              {!sponsorEditing && (
+                <button className="btn btn-primary btn-sm" onClick={openNew}>+ Adicionar Parceiro</button>
+              )}
+            </div>
+
+            {sponsorEditing && (
+              <div className="card" style={{ marginBottom: 20 }}>
+                <h4 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700 }}>
+                  {sponsorForm.id ? 'Editar Parceiro' : 'Novo Parceiro'}
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Nome *</label>
+                    <input type="text" value={sponsorForm.name} placeholder="Ex: Singular Engenharia"
+                      onChange={e => setSponsorForm(f => ({ ...f, name: e.target.value }))} />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Ordem</label>
+                    <input type="number" value={sponsorForm.order_index} min="0"
+                      onChange={e => setSponsorForm(f => ({ ...f, order_index: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginTop: 12 }}>
+                  <label>URL da Logo * <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 400 }}>(cole o link da imagem — use Supabase Storage &gt; post-media)</span></label>
+                  <input type="url" value={sponsorForm.logo_url} placeholder="https://..."
+                    onChange={e => setSponsorForm(f => ({ ...f, logo_url: e.target.value }))} />
+                </div>
+                <div className="form-group" style={{ marginTop: 12 }}>
+                  <label>Site do Parceiro <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 400 }}>(opcional)</span></label>
+                  <input type="url" value={sponsorForm.website_url} placeholder="https://..."
+                    onChange={e => setSponsorForm(f => ({ ...f, website_url: e.target.value }))} />
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, fontSize: 14, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={sponsorForm.is_active}
+                    onChange={e => setSponsorForm(f => ({ ...f, is_active: e.target.checked }))} />
+                  <span>Ativo (visível no navbar)</span>
+                </label>
+                {sponsorForm.logo_url && (
+                  <div style={{ marginTop: 14, padding: 12, background: 'var(--bg)', borderRadius: 10 }}>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 700, marginBottom: 8 }}>PRÉVIA</div>
+                    <img src={sponsorForm.logo_url} alt="preview" style={{ height: 40, objectFit: 'contain', maxWidth: 160 }} />
+                  </div>
+                )}
+                {sponsorError && <div className="alert alert-error" style={{ marginTop: 12 }}>{sponsorError}</div>}
+                <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
+                  <button className="btn btn-soft btn-sm" onClick={cancelEdit}>Cancelar</button>
+                  <button className="btn btn-primary btn-sm" onClick={saveSponsor} disabled={sponsorSaving}>
+                    {sponsorSaving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {sponsors.length === 0 ? (
+              <div className="card">
+                <div className="empty-state">
+                  <span className="empty-icon">🤝</span>
+                  <p>Nenhum parceiro cadastrado ainda.</p>
+                  <button className="btn btn-primary btn-sm" onClick={openNew}>Adicionar primeiro parceiro</button>
+                </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {sponsors.map(s => (
+                  <div key={s.id} className="card" style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 18px' }}>
+                    <div style={{ width: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', borderRadius: 8, padding: '6px 10px', flexShrink: 0 }}>
+                      <img src={s.logo_url} alt={s.name} style={{ height: 34, maxWidth: 80, objectFit: 'contain' }} />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 15 }}>{s.name}</div>
+                      {s.website_url && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>{s.website_url}</div>}
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 999,
+                      background: s.is_active ? '#dcfce7' : '#fef3c7',
+                      color: s.is_active ? '#16a34a' : '#b45309' }}>
+                      {s.is_active ? '● Ativo' : '○ Inativo'}
+                    </span>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn btn-soft btn-sm" onClick={() => openEdit(s)}>✏️ Editar</button>
+                      <button className="btn btn-sm" style={{ background: '#fff0f0', color: 'var(--red)', border: '1px solid #fca5a5' }}
+                        onClick={() => deleteSponsor(s.id)}>🗑️</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ===== USUÁRIOS ===== */}
       {tab === 'users' && (
