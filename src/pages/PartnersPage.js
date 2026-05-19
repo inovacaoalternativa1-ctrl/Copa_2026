@@ -2,6 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { getSponsors } from '../services/api';
 import './PartnersPage.css';
 
+const toAbsoluteUrl = (url) => {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+};
+
 export default function PartnersPage() {
   const [sponsors, setSponsors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,7 +45,7 @@ export default function PartnersPage() {
           {sponsors.map(s => (
             <div key={s.id} className="partner-card">
               {s.website_url ? (
-                <a href={s.website_url} target="_blank" rel="noopener noreferrer" className="partner-card-link">
+                <a href={toAbsoluteUrl(s.website_url)} target="_blank" rel="noopener noreferrer" className="partner-card-link">
                   <div className="partner-logo-wrap">
                     <img src={s.logo_url} alt={s.name} className="partner-logo" />
                   </div>
