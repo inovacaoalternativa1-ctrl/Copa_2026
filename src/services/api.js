@@ -8,6 +8,9 @@ export const getMatch = (id) => supabase.from('matches').select('*').eq('id', id
 export const getScorePredictions = (matchId, userId) =>
   supabase.from('score_predictions').select('*').eq('match_id', matchId).eq('user_id', userId).single();
 
+export const getUserAllScorePredictions = (userId) =>
+  supabase.from('score_predictions').select('match_id, predicted_score_a, predicted_score_b').eq('user_id', userId);
+
 export const upsertScorePrediction = (userId, matchId, scoreA, scoreB) =>
   supabase.from('score_predictions').upsert(
     { user_id: userId, match_id: matchId, predicted_score_a: scoreA, predicted_score_b: scoreB, updated_at: new Date().toISOString() },

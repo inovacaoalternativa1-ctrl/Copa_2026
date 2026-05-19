@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { getMatches } from '../services/api';
+import { getMatches, getUserAllScorePredictions } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
 import { syncLiveScores } from '../services/syncScores';
 import './MatchesPage.css';
@@ -41,7 +42,9 @@ const flagUrl = flag => {
 const SYNC_INTERVAL_MS = 60_000; // respect 10 req/min API limit
 
 export default function MatchesPage() {
+  const { user } = useAuth();
   const [matches, setMatches] = useState([]);
+  const [predictions, setPredictions] = useState({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [liveIds, setLiveIds] = useState(new Set());
@@ -55,8 +58,20 @@ export default function MatchesPage() {
   });
 
   useEffect(() => {
-    loadMatches().finally(() => setLoading(false));
-  }, []);
+    const init = async () => {
+      await loadMatches();
+      if (user) {
+        const { data } = await getUserAllScorePredictions(user.id);
+        if (data) {
+          const map = {};
+          data.forEach(p => { map[p.match_id] = p; });
+          setPredictions(map);
+        }
+      }
+      setLoading(false);
+    };
+    init();
+  }, [user]);
 
 
   useEffect(() => {
@@ -135,7 +150,16 @@ export default function MatchesPage() {
                   <span>📅 {fmtDate(m.match_date)}</span>
                   {m.venue && <span>📍 {m.venue}</span>}
                 </div>
-                {!m.is_locked && <div className="match-cta">Palpitar agora →</div>}
+                {predictions[m.id] && (
+                  <div className="match-prediction-badge">
+                    <span className="match-prediction-label">Meu palpite</span>
+                    <span className="match-prediction-score">
+                      {predictions[m.id].predicted_score_a} × {predictions[m.id].predicted_score_b}
+                    </span>
+                  </div>
+                )}
+                {!m.is_locked && !predictions[m.id] && <div className="match-cta">Palpitar agora →</div>}
+                {!m.is_locked && predictions[m.id] && <div className="match-cta">Editar palpite →</div>}
               </Link>
             ))}
           </div>
