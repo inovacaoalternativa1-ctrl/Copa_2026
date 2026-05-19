@@ -9,6 +9,7 @@ import MatchDetailPage from './pages/MatchDetailPage';
 import RankingPage from './pages/RankingPage';
 import ChatPage from './pages/ChatPage';
 import AdminPage from './pages/AdminPage';
+import NewsPage from './pages/NewsPage';
 import './App.css';
 
 const Private = ({ children }) => {
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="jogo/:id" element={<MatchDetailPage />} />
             <Route path="ranking" element={<RankingPage />} />
             <Route path="chat" element={<ChatPage />} />
+            <Route path="noticias" element={<NewsPage />} />
             <Route path="admin" element={<Admin><AdminPage /></Admin>} />
           </Route>
         </Routes>

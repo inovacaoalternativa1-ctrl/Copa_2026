@@ -86,6 +86,53 @@ export const adminGetPromotions = () => supabase.from('promotions').select('*').
 export const adminUpsertPromotion = (data) => supabase.from('promotions').upsert(data);
 export const adminModerateChat = (id) => supabase.from('chat_messages').update({ is_moderated: true }).eq('id', id);
 
+// ===== NEWS / POSTS =====
+export const getPosts = () =>
+  supabase.from('posts')
+    .select('*, profiles!author_id(username, avatar_url)')
+    .eq('is_published', true)
+    .order('is_pinned', { ascending: false })
+    .order('created_at', { ascending: false });
+
+export const getPostLikes = (postIds) =>
+  supabase.from('post_likes').select('post_id, user_id').in('post_id', postIds);
+
+export const getPostComments = (postId) =>
+  supabase.from('post_comments')
+    .select('*, profiles!user_id(avatar_url)')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true });
+
+export const addPostLike = (userId, postId) =>
+  supabase.from('post_likes').upsert(
+    { user_id: userId, post_id: postId },
+    { onConflict: 'user_id,post_id', ignoreDuplicates: true }
+  );
+
+export const removePostLike = (userId, postId) =>
+  supabase.from('post_likes').delete().eq('user_id', userId).eq('post_id', postId);
+
+export const addPostComment = (userId, username, postId, content) =>
+  supabase.from('post_comments').insert({ user_id: userId, username, post_id: postId, content }).select().single();
+
+export const deletePostComment = (commentId) =>
+  supabase.from('post_comments').delete().eq('id', commentId);
+
+export const adminGetAllPosts = () =>
+  supabase.from('posts')
+    .select('*, profiles!author_id(username, avatar_url)')
+    .order('is_pinned', { ascending: false })
+    .order('created_at', { ascending: false });
+
+export const adminCreatePost = (data) =>
+  supabase.from('posts').insert(data).select().single();
+
+export const adminUpdatePost = (id, data) =>
+  supabase.from('posts').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id);
+
+export const adminDeletePost = (id) =>
+  supabase.from('posts').delete().eq('id', id);
+
 export const adminGetExtraResults = (matchId) =>
   supabase.from('extra_results').select('*').eq('match_id', matchId);
 
