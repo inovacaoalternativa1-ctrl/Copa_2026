@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getMatch, getScorePredictions, upsertScorePrediction, getExtraTypes, getExtraPredictions, upsertExtraPrediction, deleteExtraPrediction } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import './MatchDetailPage.css';
@@ -41,6 +41,7 @@ const SCORE_STATUS = {
 export default function MatchDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [match, setMatch] = useState(null);
   const [scorePred, setScorePred] = useState(null); // full record
   const [scoreA, setScoreA] = useState('0');
@@ -110,8 +111,8 @@ export default function MatchDetailPage() {
     }
 
     initialExtrasRef.current = { ...userExtras };
-    setStatus({type:'success',msg:'✅ Palpite salvo com sucesso!'});
     setSaving(false);
+    navigate('/');
   };
 
   const estimatedExtras = Object.keys(userExtras).reduce((s, tid) => {
