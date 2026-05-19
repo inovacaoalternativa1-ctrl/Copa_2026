@@ -361,7 +361,7 @@ export default function NewsPage() {
                   ? <div className="news-card-video-wrap">
                       <video className="news-card-video" src={post.image_url} controls playsInline preload="metadata" />
                     </div>
-                  : <div className="news-card-image" style={{ backgroundImage: `url(${post.image_url})` }} />
+                  : <img className="news-card-image" src={post.image_url} alt={post.title} />
               )}
 
               <div className="news-card-body">

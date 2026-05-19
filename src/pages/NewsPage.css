@@ -136,9 +136,12 @@
 
 /* Cover image */
 .news-card-image {
-  height: 210px;
-  background-size: cover;
-  background-position: center;
+  width: 100%;
+  height: auto;
+  display: block;
+  max-height: 600px;
+  object-fit: contain;
+  background: #000;
 }
 
 /* Body */
@@ -708,7 +711,6 @@
   .news-card-footer  { padding: 10px 16px; }
   .news-comments     { padding: 12px 14px 16px; }
   .news-card-title   { font-size: 23px; }
-  .news-card-image   { height: 160px; }
   .form-row-2        { grid-template-columns: 1fr; }
   .news-filters      { gap: 6px; }
   .news-filter-btn   { padding: 5px 10px; font-size: 12px; }
