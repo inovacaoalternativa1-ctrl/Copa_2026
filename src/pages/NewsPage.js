@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
 import {
@@ -44,6 +44,8 @@ const avatarColor = (str = '') => {
 
 const EMPTY_FORM = { title: '', content: '', image_url: '', tag: 'Notícia', is_pinned: false, is_published: true };
 
+const isVideoUrl = (url = '') => /\.(mp4|mov|webm|avi|mkv|ogv)(\?|$)/i.test(url);
+
 export default function NewsPage() {
   const { user, profile, isAdmin } = useAuth();
 
@@ -65,6 +67,66 @@ export default function NewsPage() {
   const [form,         setForm]         = useState(EMPTY_FORM);
   const [submitting,   setSubmitting]   = useState(false);
   const [formError,    setFormError]    = useState('');
+
+  // media upload state
+  const [mediaPreview,  setMediaPreview]  = useState(null);
+  const [mediaIsVideo,  setMediaIsVideo]  = useState(false);
+  const [uploading,     setUploading]     = useState(false);
+  const [uploadErr,     setUploadErr]     = useState('');
+  const [dragOver,      setDragOver]      = useState(false);
+  const fileInputRef = useRef(null);
+
+  // ─── Media upload helpers ────────────────────────────────────────────────
+  const compressImage = (file) => new Promise((resolve) => {
+    const img = new Image();
+    const objUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objUrl);
+      const MAX = 1400;
+      let { width, height } = img;
+      if (width > MAX)  { height = Math.round(height * MAX / width); width = MAX; }
+      if (height > MAX) { width = Math.round(width * MAX / height); height = MAX; }
+      const canvas = document.createElement('canvas');
+      canvas.width = width; canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(resolve, 'image/jpeg', 0.88);
+    };
+    img.src = objUrl;
+  });
+
+  const processFile = async (file) => {
+    const isVid = file.type.startsWith('video/');
+    const isImg = file.type.startsWith('image/');
+    if (!isVid && !isImg) { setUploadErr('Formato não suportado. Use foto (JPG/PNG) ou vídeo (MP4/MOV).'); return; }
+    if (isVid && file.size > 50 * 1024 * 1024) { setUploadErr('Vídeo muito grande. Máximo 50MB.'); return; }
+    setUploadErr('');
+    setMediaIsVideo(isVid);
+    setMediaPreview(URL.createObjectURL(file));
+    setUploading(true);
+    let toUpload = file;
+    let contentType = file.type;
+    if (isImg) { toUpload = await compressImage(file); contentType = 'image/jpeg'; }
+    const ext  = isVid ? (file.name.split('.').pop() || 'mp4') : 'jpg';
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('post-media').upload(path, toUpload, { contentType, upsert: false });
+    if (error) { setUploadErr(`Erro no upload: ${error.message}`); setUploading(false); return; }
+    const { data: urlData } = supabase.storage.from('post-media').getPublicUrl(path);
+    setForm(f => ({ ...f, image_url: urlData.publicUrl }));
+    setUploading(false);
+  };
+
+  const handleFileSelect = (e) => { const f = e.target.files[0]; if (f) processFile(f); };
+
+  const clearMedia = () => {
+    setMediaPreview(null); setMediaIsVideo(false); setUploadErr('');
+    setForm(f => ({ ...f, image_url: '' }));
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault(); setDragOver(false);
+    const f = e.dataTransfer.files[0]; if (f) processFile(f);
+  };
 
   // ─── Load feed ───────────────────────────────────────────────────────────
   const loadFeed = async () => {
@@ -197,13 +259,19 @@ export default function NewsPage() {
 
   // ─── Admin CRUD ───────────────────────────────────────────────────────────
   const openCreate = () => {
-    setEditingPost(null); setForm(EMPTY_FORM); setFormError(''); setShowModal(true);
+    setEditingPost(null); setForm(EMPTY_FORM); setFormError('');
+    setMediaPreview(null); setMediaIsVideo(false); setUploadErr('');
+    setShowModal(true);
   };
   const openEdit = (post) => {
     setEditingPost(post);
     setForm({ title: post.title, content: post.content, image_url: post.image_url || '',
               tag: post.tag || 'Notícia', is_pinned: !!post.is_pinned, is_published: post.is_published });
-    setFormError(''); setShowModal(true);
+    setFormError('');
+    setMediaPreview(post.image_url || null);
+    setMediaIsVideo(isVideoUrl(post.image_url || ''));
+    setUploadErr('');
+    setShowModal(true);
   };
   const handleSubmitPost = async () => {
     if (!form.title.trim())   { setFormError('Título é obrigatório.'); return; }
@@ -287,9 +355,13 @@ export default function NewsPage() {
           return (
             <article key={post.id} className={`news-card${post.is_pinned ? ' pinned' : ''}${!post.is_published ? ' draft' : ''}`}>
 
-              {/* Cover image */}
+              {/* Cover media (image or video) */}
               {post.image_url && (
-                <div className="news-card-image" style={{ backgroundImage: `url(${post.image_url})` }} />
+                isVideoUrl(post.image_url)
+                  ? <div className="news-card-video-wrap">
+                      <video className="news-card-video" src={post.image_url} controls playsInline preload="metadata" />
+                    </div>
+                  : <div className="news-card-image" style={{ backgroundImage: `url(${post.image_url})` }} />
               )}
 
               <div className="news-card-body">
@@ -435,16 +507,42 @@ export default function NewsPage() {
               </div>
 
               <div className="form-group">
-                <label>Imagem de capa (URL — opcional)</label>
-                <input
-                  type="url"
-                  value={form.image_url}
-                  onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))}
-                  placeholder="https://..."
-                />
-                {form.image_url && (
-                  <div className="img-preview" style={{ backgroundImage: `url(${form.image_url})` }} />
-                )}
+                <label>📷 Foto ou vídeo de capa (opcional)</label>
+
+                {/* Drop zone */}
+                <div
+                  className={`media-drop-zone${dragOver ? ' drag-over' : ''}${uploading ? ' uploading' : ''}`}
+                  onClick={() => !uploading && fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                  onDragLeave={() => setDragOver(false)}
+                >
+                  {uploading ? (
+                    <div className="media-dz-uploading">
+                      <div className="spinner-sm" />
+                      <span>Enviando para o servidor...</span>
+                    </div>
+                  ) : mediaPreview ? (
+                    <div className="media-dz-preview">
+                      {mediaIsVideo
+                        ? <video src={mediaPreview} className="media-preview-el" muted playsInline />
+                        : <img   src={mediaPreview} className="media-preview-el" alt="capa" />}
+                      <div className="media-dz-overlay">
+                        <button className="media-dz-btn" onClick={e => { e.stopPropagation(); fileInputRef.current?.click(); }}>🔄 Trocar</button>
+                        <button className="media-dz-btn danger" onClick={e => { e.stopPropagation(); clearMedia(); }}>🗑️ Remover</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="media-dz-empty">
+                      <div className="media-dz-icon">📁</div>
+                      <strong>Clique ou arraste aqui</strong>
+                      <span>Fotos: JPG, PNG, GIF &nbsp;·&nbsp; Vídeos: MP4, MOV &nbsp;·&nbsp; Máx 50MB</span>
+                    </div>
+                  )}
+                </div>
+
+                {uploadErr && <p className="media-upload-err">{uploadErr}</p>}
+                <input ref={fileInputRef} type="file" accept="image/*,video/*" style={{ display: 'none' }} onChange={handleFileSelect} />
               </div>
 
               <div className="form-row-2">
