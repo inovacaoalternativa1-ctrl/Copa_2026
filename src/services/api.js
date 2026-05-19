@@ -1,0 +1,106 @@
+import supabase from './supabase';
+
+// ===== MATCHES =====
+export const getMatches = () => supabase.from('matches').select('*').order('match_date');
+export const getMatch = (id) => supabase.from('matches').select('*').eq('id', id).single();
+
+// ===== SCORE PREDICTIONS =====
+export const getScorePredictions = (matchId, userId) =>
+  supabase.from('score_predictions').select('*').eq('match_id', matchId).eq('user_id', userId).single();
+
+export const upsertScorePrediction = (userId, matchId, scoreA, scoreB) =>
+  supabase.from('score_predictions').upsert(
+    { user_id: userId, match_id: matchId, predicted_score_a: scoreA, predicted_score_b: scoreB, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,match_id' }
+  );
+
+// ===== EXTRA TYPES =====
+export const getExtraTypes = (phase = 'groups') => {
+  const field = `applicable_in_${phase === 'round_of_16' || phase === 'quarterfinals' || phase === 'semifinals' ? 'knockout' : phase}`;
+  return supabase.from('extra_prediction_types').select('*').eq('is_active', true).eq(field, true).order('base_points');
+};
+
+// ===== EXTRA PREDICTIONS =====
+export const getExtraPredictions = (matchId, userId) =>
+  supabase.from('extra_predictions').select('*').eq('match_id', matchId).eq('user_id', userId);
+
+export const upsertExtraPrediction = (userId, matchId, extraTypeId, answer) =>
+  supabase.from('extra_predictions').upsert(
+    { user_id: userId, match_id: matchId, extra_type_id: extraTypeId, predicted_answer: answer, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,match_id,extra_type_id' }
+  );
+
+export const deleteExtraPrediction = (userId, matchId, extraTypeId) =>
+  supabase.from('extra_predictions').delete().eq('user_id', userId).eq('match_id', matchId).eq('extra_type_id', extraTypeId);
+
+// ===== ADMIN – VER PALPITES DE UM JOGO =====
+export const adminGetMatchScorePredictions = (matchId) =>
+  supabase.from('score_predictions')
+    .select('*')
+    .eq('match_id', matchId)
+    .order('points_earned', { ascending: false, nullsFirst: false });
+
+export const adminGetMatchExtraPredictions = (matchId) =>
+  supabase.from('extra_predictions')
+    .select('*')
+    .eq('match_id', matchId);
+
+// ===== RANKING =====
+export const getRanking = () => supabase.from('ranking').select('*').order('position').limit(200);
+
+// ===== CHAT =====
+export const getChatMessages = () => {
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  return supabase
+    .from('chat_messages')
+    .select('*, profiles(avatar_url)')
+    .eq('is_moderated', false)
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(100);
+};
+
+export const sendChatMessage = (userId, username, message) =>
+  supabase.from('chat_messages').insert({ user_id: userId, username, message });
+
+export const subscribeToChat = (callback) =>
+  supabase.channel('chat').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, callback).subscribe();
+
+// ===== SPONSORS =====
+export const getSponsors = () => supabase.from('sponsors').select('*').eq('is_active', true).order('order_index');
+
+// ===== PROMOTIONS =====
+export const getPromotions = () => supabase.from('promotions').select('*').eq('is_active', true);
+
+// ===== ADMIN =====
+export const adminGetAllTypes = () => supabase.from('extra_prediction_types').select('*').order('id');
+export const adminUpdateType = (id, data) => supabase.from('extra_prediction_types').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id);
+export const adminCreateType = (data) => supabase.from('extra_prediction_types').insert(data).select().single();
+export const adminUpdateMatch = (id, data) => supabase.from('matches').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id);
+export const adminCreateMatch = (data) => supabase.from('matches').insert(data).select().single();
+export const adminGetUsers = () => supabase.from('profiles').select('*').order('created_at', { ascending: false });
+export const adminGetSponsors = () => supabase.from('sponsors').select('*').order('order_index');
+export const adminUpsertSponsor = (data) => supabase.from('sponsors').upsert(data);
+export const adminDeleteSponsor = (id) => supabase.from('sponsors').delete().eq('id', id);
+export const adminGetPromotions = () => supabase.from('promotions').select('*').order('created_at', { ascending: false });
+export const adminUpsertPromotion = (data) => supabase.from('promotions').upsert(data);
+export const adminModerateChat = (id) => supabase.from('chat_messages').update({ is_moderated: true }).eq('id', id);
+
+export const adminGetExtraResults = (matchId) =>
+  supabase.from('extra_results').select('*').eq('match_id', matchId);
+
+export const adminSetMatchResult = async (matchId, scoreA, scoreB) => {
+  return supabase.from('matches').update({
+    score_a: scoreA, score_b: scoreB,
+    is_finished: true, is_locked: true,
+    updated_at: new Date().toISOString()
+  }).eq('id', matchId);
+};
+
+export const adminValidateExtra = async (matchId, extraTypeId, result, adminId) => {
+  return supabase.from('extra_results').upsert(
+    { match_id: matchId, extra_type_id: extraTypeId, official_result: result,
+      is_validated: true, validated_at: new Date().toISOString(), validated_by: adminId },
+    { onConflict: 'match_id,extra_type_id' }
+  );
+};

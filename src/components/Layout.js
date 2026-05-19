@@ -1,0 +1,290 @@
+import React, { useState, useRef } from 'react';
+import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import supabase from '../services/supabase';
+import './Layout.css';
+
+const getInitials = (name = '') => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return name.slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
+
+export default function Layout() {
+  const { user, profile, signOut, isAdmin, refreshProfile } = useAuth();
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState(null);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [newUsername, setNewUsername] = useState('');
+  const [usernameError, setUsernameError] = useState('');
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [usernameSaved, setUsernameSaved] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleSignOut = async () => { await signOut(); navigate('/login'); };
+
+  const compressImage = (file) => new Promise((resolve) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const MAX = 400;
+      let { width, height } = img;
+      if (width > height) {
+        if (width > MAX) { height = Math.round(height * MAX / width); width = MAX; }
+      } else {
+        if (height > MAX) { width = Math.round(width * MAX / height); height = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+      canvas.toBlob(resolve, 'image/jpeg', 0.85);
+    };
+    img.src = objectUrl;
+  });
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadError('');
+    setAvatarFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setAvatarPreview(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarSave = async () => {
+    if (!avatarFile || !user) return;
+    setUploading(true);
+    setUploadError('');
+    const compressed = await compressImage(avatarFile);
+    const filePath = `${user.id}/avatar`;
+    const { error: uploadErr } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, compressed, { upsert: true, contentType: 'image/jpeg' });
+    if (uploadErr) {
+      console.error('[Avatar] Upload error:', uploadErr.message, uploadErr);
+      setUploadError(`Erro: ${uploadErr.message}`);
+      setUploading(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    const avatarUrl = `${urlData.publicUrl}?v=${Date.now()}`;
+    await supabase.from('profiles').update({ avatar_url: avatarUrl }).eq('id', user.id);
+    await refreshProfile();
+    setShowAvatarModal(false);
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setUploading(false);
+  };
+
+  const closeModal = () => {
+    setShowAvatarModal(false);
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    setUploadError('');
+    setNewUsername('');
+    setUsernameError('');
+    setUsernameSaved(false);
+  };
+
+  const getUsernameCooldown = () => {
+    if (!profile?.username_changed_at) return { canChange: true, daysLeft: 0 };
+    const changed = new Date(profile.username_changed_at);
+    const diffMs = Date.now() - changed.getTime();
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    if (diffDays >= 14) return { canChange: true, daysLeft: 0 };
+    return { canChange: false, daysLeft: Math.ceil(14 - diffDays) };
+  };
+
+  const handleUsernameSave = async () => {
+    const trimmed = newUsername.trim();
+    if (!trimmed) { setUsernameError('Digite um nome válido.'); return; }
+    if (trimmed.length < 3) { setUsernameError('Mínimo de 3 caracteres.'); return; }
+    if (trimmed.length > 30) { setUsernameError('Máximo de 30 caracteres.'); return; }
+    if (trimmed === profile?.username) { setUsernameError('O nome é igual ao atual.'); return; }
+
+    const { canChange } = getUsernameCooldown();
+    if (!canChange) return;
+
+    setSavingUsername(true);
+    setUsernameError('');
+
+    // Tenta salvar com username_changed_at; se a coluna não existir ainda, salva só o username
+    let result = await supabase
+      .from('profiles')
+      .update({ username: trimmed, username_changed_at: new Date().toISOString() })
+      .eq('id', user.id);
+
+    if (result.error?.message?.includes('username_changed_at')) {
+      result = await supabase
+        .from('profiles')
+        .update({ username: trimmed })
+        .eq('id', user.id);
+    }
+
+    if (result.error) {
+      console.error('[Username] Erro ao salvar:', result.error.message, result.error);
+      setUsernameError(`Erro: ${result.error.message}`);
+      setSavingUsername(false);
+      return;
+    }
+
+    // Atualiza o nome em todas as mensagens anteriores do usuário
+    await supabase
+      .from('chat_messages')
+      .update({ username: trimmed })
+      .eq('user_id', user.id);
+
+    await refreshProfile();
+    setNewUsername('');
+    setUsernameSaved(true);
+    setSavingUsername(false);
+  };
+
+  return (
+    <div className="layout">
+      <div className="topbar" />
+      <header className="navbar">
+        <div className="nav-inner">
+          <Link to="/" className="brand">
+            <div className="brand-mark">⚽</div>
+            <div>
+              <div className="brand-name">Copa Simulada</div>
+              <div className="brand-sub">Alternativa Serviços</div>
+            </div>
+          </Link>
+
+          <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
+            <NavLink to="/" end className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>⚽ Palpites</NavLink>
+            <NavLink to="/ranking" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>🏆 Ranking</NavLink>
+            <NavLink to="/chat" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>💬 Chat</NavLink>
+            {isAdmin && <NavLink to="/admin" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>⚙️ Admin</NavLink>}
+          </nav>
+
+          <div className="nav-user">
+            <button
+              className="nav-avatar-btn"
+              onClick={() => setShowAvatarModal(true)}
+              title="Alterar foto de perfil"
+            >
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt={profile.username} className="nav-avatar-img" />
+                : <span className="nav-avatar-initials">{getInitials(profile?.username)}</span>}
+            </button>
+            <span className="user-name">{profile?.username}</span>
+            <button className="btn btn-soft btn-sm" onClick={handleSignOut}>Sair</button>
+            <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
+          </div>
+        </div>
+      </header>
+
+      <main className="main-content">
+        <Outlet />
+      </main>
+
+      <footer className="footer">
+        <p>© 2026 Copa Simulada · Alternativa Serviços · Participação gratuita</p>
+      </footer>
+
+      {/* Modal de edição de perfil */}
+      {showAvatarModal && (() => {
+        const { canChange, daysLeft } = getUsernameCooldown();
+        return (
+          <div className="modal-overlay" onClick={closeModal}>
+            <div className="modal" style={{maxWidth: 420}} onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <span className="modal-title">Editar Perfil</span>
+                <button className="modal-close" onClick={closeModal}>✕</button>
+              </div>
+
+              {/* ── Seção: Foto ── */}
+              <div className="profile-section">
+                <p className="profile-section-label">Foto de perfil</p>
+                <div className="avatar-modal-body">
+                  <div
+                    className="avatar-preview-circle"
+                    onClick={() => fileInputRef.current?.click()}
+                    title="Clique para escolher uma foto"
+                  >
+                    {(avatarPreview || profile?.avatar_url)
+                      ? <img src={avatarPreview || profile.avatar_url} alt="preview" />
+                      : <span>{getInitials(profile?.username)}</span>}
+                    <div className="avatar-preview-overlay">📷</div>
+                  </div>
+                  <p className="avatar-hint">Clique na imagem para escolher uma foto</p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    onChange={handleFileChange}
+                  />
+                  {uploadError && <p className="avatar-error">{uploadError}</p>}
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{width: '100%'}}
+                    disabled={!avatarFile || uploading}
+                    onClick={handleAvatarSave}
+                  >
+                    {uploading ? 'Salvando...' : 'Salvar foto'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="profile-divider" />
+
+              {/* ── Seção: Nome ── */}
+              <div className="profile-section">
+                <p className="profile-section-label">Nome de usuário</p>
+                <p className="profile-current-name">Atual: <strong>{profile?.username}</strong></p>
+
+                {canChange ? (
+                  <div className="profile-username-form">
+                    <input
+                      className="profile-username-input"
+                      type="text"
+                      placeholder="Novo nome..."
+                      value={newUsername}
+                      maxLength={30}
+                      onChange={e => { setNewUsername(e.target.value); setUsernameError(''); setUsernameSaved(false); }}
+                      onKeyDown={e => e.key === 'Enter' && handleUsernameSave()}
+                    />
+                    {usernameError && <p className="avatar-error">{usernameError}</p>}
+                    {usernameSaved && <p className="username-saved">✓ Nome alterado com sucesso!</p>}
+                    <button
+                      className="btn btn-primary btn-sm"
+                      style={{width: '100%'}}
+                      disabled={!newUsername.trim() || savingUsername}
+                      onClick={handleUsernameSave}
+                    >
+                      {savingUsername ? 'Salvando...' : 'Salvar nome'}
+                    </button>
+                    {profile?.username_changed_at && (
+                      <p className="avatar-hint">Após alterar, próxima mudança disponível em 14 dias.</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="username-cooldown">
+                    <span className="username-cooldown-icon">🔒</span>
+                    <p>Você já alterou seu nome recentemente.</p>
+                    <p className="username-cooldown-days">Disponível em <strong>{daysLeft} dia{daysLeft !== 1 ? 's' : ''}</strong></p>
+                  </div>
+                )}
+              </div>
+
+              <div style={{padding: '0 20px 20px'}}>
+                <button className="btn btn-soft btn-sm" style={{width:'100%'}} onClick={closeModal}>Fechar</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </div>
+  );
+}
