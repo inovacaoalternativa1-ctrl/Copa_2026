@@ -59,4 +59,7 @@
   .phase-filter { gap: 6px; }
   .filter-btn { padding: 6px 12px; font-size: 12px; }
   .phase-label { font-size: 18px; }
+  .match-prediction-badge { padding: 6px 10px; }
+  .match-prediction-label { font-size: 10px; }
+  .match-prediction-score { font-size: 18px; }
 }
