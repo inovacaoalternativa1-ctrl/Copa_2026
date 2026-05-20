@@ -2,14 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { getSponsors } from '../services/api';
 import './SocialGateModal.css';
 
-const ALTERNATIVA_IG = 'https://www.instagram.com/alternativaservicospe';
+const isAlternativa = (name) => /alternativa/i.test(name);
 
 export default function SocialGateModal({ userId, onConfirmed }) {
   const [sponsors, setSponsors] = useState([]);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    getSponsors().then(({ data }) => setSponsors((data || []).slice(0, 3)));
+    getSponsors().then(({ data }) => {
+      const list = data || [];
+      // Put Alternativa first
+      const alt = list.filter(s => isAlternativa(s.name));
+      const rest = list.filter(s => !isAlternativa(s.name));
+      setSponsors([...alt, ...rest]);
+    });
   }, []);
 
   const toAbsolute = (url) => {
@@ -32,38 +38,32 @@ export default function SocialGateModal({ userId, onConfirmed }) {
         </div>
 
         <div className="sg-accounts">
-          <a href={ALTERNATIVA_IG} target="_blank" rel="noopener noreferrer" className="sg-account sg-account--main">
-            <div className="sg-account-avatar">A</div>
-            <div className="sg-account-info">
-              <span className="sg-account-name">Alternativa Serviços</span>
-              <span className="sg-account-handle">@alternativaservicospe</span>
-            </div>
-            <span className="sg-follow-tag">Seguir ↗</span>
-          </a>
-
-          {sponsors.map(s => (
-            <a
-              key={s.id}
-              href={toAbsolute(s.website_url)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="sg-account"
-            >
-              {s.logo_url
-                ? <img src={s.logo_url} alt={s.name} className="sg-account-logo" />
-                : <div className="sg-account-avatar sg-account-avatar--partner">🤝</div>
-              }
-              <div className="sg-account-info">
-                <span className="sg-account-name">{s.name}</span>
-                {s.website_url && (
-                  <span className="sg-account-handle">
-                    {toAbsolute(s.website_url).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
-                  </span>
-                )}
-              </div>
-              <span className="sg-follow-tag">Seguir ↗</span>
-            </a>
-          ))}
+          {sponsors.map(s => {
+            const isMain = isAlternativa(s.name);
+            return (
+              <a
+                key={s.id}
+                href={toAbsolute(s.website_url)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`sg-account${isMain ? ' sg-account--main' : ''}`}
+              >
+                {s.logo_url
+                  ? <img src={s.logo_url} alt={s.name} className="sg-account-logo" />
+                  : <div className={`sg-account-avatar${isMain ? '' : ' sg-account-avatar--partner'}`}>{s.name.charAt(0)}</div>
+                }
+                <div className="sg-account-info">
+                  <span className="sg-account-name">{s.name}</span>
+                  {s.website_url && (
+                    <span className="sg-account-handle">
+                      {toAbsolute(s.website_url).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
+                    </span>
+                  )}
+                </div>
+                <span className="sg-follow-tag">Seguir ↗</span>
+              </a>
+            );
+          })}
         </div>
 
         <label className="sg-check-row">
