@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getRanking, getRoundRanking, getPhaseRanking } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import './RankingPage.css';
@@ -57,6 +57,18 @@ export default function RankingPage() {
     };
     load();
   }, []);
+
+  const phaseMap = useMemo(() => {
+    const map = {};
+    [1, 2, 3].forEach(r => {
+      (roundRankings[r] || []).forEach(u => { map[u.user_id] = `${r}ª Rod.`; });
+    });
+    const labels = { round_of_16: 'Oitavas', quarterfinals: 'Quartas', semifinals: 'Semifinal', final: 'Final' };
+    ['round_of_16', 'quarterfinals', 'semifinals', 'final'].forEach(ph => {
+      (phaseRankings[ph] || []).forEach(u => { map[u.user_id] = labels[ph]; });
+    });
+    return map;
+  }, [roundRankings, phaseRankings]);
 
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>;
 
@@ -131,6 +143,7 @@ export default function RankingPage() {
                     </>
                   ) : (
                     <>
+                      <th>Fase</th>
                       <th>Placar</th>
                       <th>Extras</th>
                       <th>Total</th>
@@ -143,7 +156,7 @@ export default function RankingPage() {
               <tbody>
                 {currentData.map((r, i) => (
                   <tr
-                    key={isRound ? `${r.user_id}-${tab}` : r.id}
+                    key={isRound ? `${r.user_id}-${tab}` : r.user_id}
                     className={r.username === profile?.username ? 'my-row' : ''}
                   >
                     <td className="rank-pos">
@@ -169,6 +182,15 @@ export default function RankingPage() {
                       </>
                     ) : (
                       <>
+                        <td>
+                          <span className={`phase-badge phase-badge--${
+                            !phaseMap[r.user_id] ? 'quiz'
+                            : ['1ª Rod.','2ª Rod.','3ª Rod.'].includes(phaseMap[r.user_id]) ? 'grupos'
+                            : 'knockout'
+                          }`}>
+                            {phaseMap[r.user_id] || 'Quiz'}
+                          </span>
+                        </td>
                         <td>{Number(r.score_points||0).toFixed(0)}</td>
                         <td className="rank-extra">+{Number(r.extra_points||0).toFixed(2)}</td>
                         <td className="rank-total">{Number(r.total_points||0).toFixed(2)}</td>
