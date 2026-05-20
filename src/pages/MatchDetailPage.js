@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getMatch, getScorePredictions, upsertScorePrediction, getExtraTypes, getExtraPredictions, upsertExtraPrediction, deleteExtraPrediction } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import SocialGateModal from '../components/SocialGateModal';
 import './MatchDetailPage.css';
 
 const flagUrl = flag => {
@@ -42,6 +43,9 @@ export default function MatchDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [showGate, setShowGate] = useState(() =>
+    user ? !localStorage.getItem(`copa2026_social_ok_${user.id}`) : false
+  );
   const [match, setMatch] = useState(null);
   const [scorePred, setScorePred] = useState(null); // full record
   const [scoreA, setScoreA] = useState('0');
@@ -136,6 +140,9 @@ export default function MatchDetailPage() {
 
   return (
     <div className="match-detail">
+      {showGate && user && (
+        <SocialGateModal userId={user.id} onConfirmed={() => setShowGate(false)} />
+      )}
       <Link to="/" className="back-link">← Voltar</Link>
 
       {/* Hero */}
