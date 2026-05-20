@@ -309,10 +309,15 @@ export default function AdminPage() {
     }
   }, []);
 
-  // Run once when entering the results tab (server-side cron handles automatic every-minute sync)
+  // Auto-sync every 60s while on results tab
   useEffect(() => {
     if (tab !== 'results') return;
     syncScores(true);
+    syncIntervalRef.current = setInterval(() => syncScores(true), 60000);
+    return () => {
+      clearInterval(syncIntervalRef.current);
+      syncIntervalRef.current = null;
+    };
   }, [tab, syncScores]);
   // ─────────────────────────────────────────────────────────────────
 
