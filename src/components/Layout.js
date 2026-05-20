@@ -162,6 +162,7 @@ export default function Layout() {
 
           <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
             <NavLink to="/" end className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>⚽ Palpites</NavLink>
+            <NavLink to="/quiz" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>🧠 Quiz</NavLink>
             <NavLink to="/ranking" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>🏆 Ranking</NavLink>
             <NavLink to="/chat" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>💬 Chat</NavLink>
             <NavLink to="/noticias" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>📰 Notícias</NavLink>

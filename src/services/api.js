@@ -52,6 +52,8 @@ export const adminGetMatchExtraPredictions = (matchId) =>
 export const getRanking = () => supabase.from('ranking').select('*').order('position').limit(200);
 export const getRoundRanking = (round) =>
   supabase.from('ranking_by_round').select('*').eq('round_number', round).order('position').limit(100);
+export const getPhaseRanking = (phase) =>
+  supabase.from('ranking_by_phase').select('*').eq('phase', phase).order('position').limit(100);
 
 // ===== CHAT =====
 export const getChatMessages = () => {
@@ -90,6 +92,22 @@ export const adminDeleteSponsor = (id) => supabase.from('sponsors').delete().eq(
 export const adminGetPromotions = () => supabase.from('promotions').select('*').order('created_at', { ascending: false });
 export const adminUpsertPromotion = (data) => supabase.from('promotions').upsert(data);
 export const adminModerateChat = (id) => supabase.from('chat_messages').update({ is_moderated: true }).eq('id', id);
+
+// ===== QUIZ =====
+export const getTodayQuiz = () =>
+  supabase.from('quiz_questions')
+    .select('id, quiz_date, question_text, options, explanation')
+    .eq('quiz_date', new Date().toISOString().split('T')[0])
+    .maybeSingle();
+
+export const getUserQuizAnswer = (questionId) =>
+  supabase.from('quiz_answers')
+    .select('selected_option_index, is_correct, correct_option_index')
+    .eq('question_id', questionId)
+    .maybeSingle();
+
+export const submitQuizAnswer = (questionId, selectedIndex) =>
+  supabase.rpc('submit_quiz_answer', { p_question_id: questionId, p_selected_index: selectedIndex });
 
 // ===== NEWS / POSTS =====
 export const getPosts = () =>
