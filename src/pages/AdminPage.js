@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   adminGetAllTypes, adminGetUsers, adminSetMatchResult, adminValidateExtra,
   adminGetMatchScorePredictions, adminGetMatchExtraPredictions,
-  adminGetExtraResults, getMatches,
+  adminGetExtraResults, getMatches, adminUpdateMatch,
   adminGetSponsors, adminUpsertSponsor, adminDeleteSponsor,
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -90,6 +90,7 @@ export default function AdminPage() {
   const [selMatchId, setSelMatchId] = useState('');
   const [resA, setResA] = useState('');
   const [resB, setResB] = useState('');
+  const [roundNum, setRoundNum] = useState('');
   const [extraResults, setExtraResults] = useState({});
 
   // Palpites
@@ -172,12 +173,14 @@ export default function AdminPage() {
     setResA('');
     setResB('');
     setExtraResults({});
+    setRoundNum('');
     if (!matchId) return;
     const m = matches.find(x => x.id === parseInt(matchId));
     if (m?.is_finished) {
       setResA(String(m.score_a ?? ''));
       setResB(String(m.score_b ?? ''));
     }
+    if (m?.round_number) setRoundNum(String(m.round_number));
     const { data } = await adminGetExtraResults(parseInt(matchId));
     if (data?.length) {
       const map = {};
@@ -198,6 +201,11 @@ export default function AdminPage() {
     try {
       const { error: e1 } = await adminSetMatchResult(parseInt(selMatchId), parseInt(resA), parseInt(resB));
       if (e1) throw new Error(e1.message);
+
+      if (selMatch?.phase === 'groups' && roundNum) {
+        const { error: e3 } = await adminUpdateMatch(parseInt(selMatchId), { round_number: parseInt(roundNum) });
+        if (e3) throw new Error(e3.message);
+      }
 
       const extraEntries = Object.entries(extraResults).filter(([k]) =>
         applicableExtras.find(t => t.id === parseInt(k))
@@ -490,6 +498,33 @@ export default function AdminPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Round selector - groups only */}
+                {selMatch.phase === 'groups' && (
+                  <div style={{ padding: '14px 0', borderTop: '1px solid var(--line)' }}>
+                    <div className="rpanel-section-label">Rodada da Fase de Grupos</div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                      {['1','2','3'].map(n => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => setRoundNum(n)}
+                          style={{
+                            padding: '7px 18px', borderRadius: 999,
+                            border: `2px solid ${roundNum === n ? 'var(--blue)' : 'var(--line)'}`,
+                            background: roundNum === n ? 'var(--blue)' : 'white',
+                            color: roundNum === n ? 'white' : 'var(--muted)',
+                            fontWeight: 800, fontSize: 13, cursor: 'pointer',
+                            fontFamily: 'Inter, sans-serif', transition: 'all .2s',
+                          }}
+                        >
+                          {n}ª Rodada
+                        </button>
+                      ))}
+                    </div>
+                    {!roundNum && <div style={{ fontSize: 12, color: 'var(--orange)', marginTop: 6 }}>⚠️ Selecione a rodada para incluir no ranking por rodada</div>}
+                  </div>
+                )}
 
                 {/* Extras section */}
                 <div className="rpanel-extras-section">

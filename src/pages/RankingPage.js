@@ -1,20 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { getRanking } from '../services/api';
+import { getRanking, getRoundRanking } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import './RankingPage.css';
 
 const MEDALS = ['🥇','🥈','🥉'];
 
+const TABS = [
+  { key: 'geral', label: '🏆 Geral' },
+  { key: '1', label: '1ª Rodada' },
+  { key: '2', label: '2ª Rodada' },
+  { key: '3', label: '3ª Rodada' },
+];
+
+const ROUND_LABEL = { '1': '1ª Rodada', '2': '2ª Rodada', '3': '3ª Rodada' };
+
 export default function RankingPage() {
   const [ranking, setRanking] = useState([]);
+  const [roundRankings, setRoundRankings] = useState({ 1: [], 2: [], 3: [] });
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('geral');
   const { profile } = useAuth();
 
-  useEffect(() => { getRanking().then(({data}) => setRanking(data||[])).finally(() => setLoading(false)); }, []);
+  useEffect(() => {
+    const load = async () => {
+      const [geral, r1, r2, r3] = await Promise.all([
+        getRanking(),
+        getRoundRanking(1),
+        getRoundRanking(2),
+        getRoundRanking(3),
+      ]);
+      setRanking(geral.data || []);
+      setRoundRankings({ 1: r1.data || [], 2: r2.data || [], 3: r3.data || [] });
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>;
 
-  const myPos = ranking.find(r => r.username === profile?.username);
+  const isRound = tab !== 'geral';
+  const currentData = isRound ? (roundRankings[Number(tab)] || []) : ranking;
+  const myPos = currentData.find(r => r.username === profile?.username);
 
   return (
     <div className="ranking-page">
@@ -23,62 +49,99 @@ export default function RankingPage() {
         <span className="badge badge-orange">{ranking.length} participantes</span>
       </div>
 
+      <div className="ranking-tabs">
+        {TABS.map(t => (
+          <button key={t.key} className={`ranking-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {isRound && currentData.length === 0 && (
+        <div className="empty-state">
+          <span className="empty-icon">⏳</span>
+          <p>Nenhum resultado disponível ainda para a {ROUND_LABEL[tab]}.</p>
+        </div>
+      )}
+
       {myPos && (
         <div className="my-position">
           <span className="my-pos-num">#{myPos.position}</span>
           <div>
-            <div className="my-pos-name">Sua posição atual</div>
-            <div className="my-pos-pts">{Number(myPos.total_points).toFixed(2)} pontos</div>
+            <div className="my-pos-name">Sua posição {isRound ? `na ${ROUND_LABEL[tab]}` : 'atual'}</div>
+            <div className="my-pos-pts">{Number(isRound ? myPos.round_points : myPos.total_points).toFixed(2)} pontos</div>
           </div>
           <div className="my-pos-stats">
             <span>{myPos.exact_scores} exatos</span>
             <span>{myPos.correct_winners} vencedores</span>
-            <span>{myPos.correct_extras} extras</span>
+            {!isRound && <span>{myPos.correct_extras} extras</span>}
           </div>
         </div>
       )}
 
-      <div className="card">
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Participante</th>
-                <th>Cidade/UF</th>
-                <th>Placar</th>
-                <th>Extras</th>
-                <th>Total</th>
-                <th>Exatos</th>
-                <th>Acertos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ranking.map((r, i) => (
-                <tr key={r.id} className={r.username === profile?.username ? 'my-row' : ''}>
-                  <td className="rank-pos">
-                    {i < 3 ? MEDALS[i] : <span className="rank-num">{r.position}</span>}
-                  </td>
-                  <td>
-                    <div className="rank-user">
-                      {r.username === profile?.username && <span className="you-tag">Você</span>}
-                      <span className="rank-username">{r.username}</span>
-                      {r.instagram && <a href={`https://instagram.com/${r.instagram.replace('@','')}`} target="_blank" rel="noreferrer" className="rank-ig">📷</a>}
-                    </div>
-                    {r.full_name && <div className="rank-fullname">{r.full_name}</div>}
-                  </td>
-                  <td className="rank-city">{r.city && r.state ? `${r.city}/${r.state}` : '-'}</td>
-                  <td>{Number(r.score_points||0).toFixed(0)}</td>
-                  <td className="rank-extra">+{Number(r.extra_points||0).toFixed(2)}</td>
-                  <td className="rank-total">{Number(r.total_points||0).toFixed(2)}</td>
-                  <td className="rank-exact">{r.exact_scores||0}</td>
-                  <td>{r.correct_winners||0}</td>
+      {currentData.length > 0 && (
+        <div className="card">
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Participante</th>
+                  <th>Cidade/UF</th>
+                  {isRound ? (
+                    <>
+                      <th>Pontos</th>
+                      <th>Exatos</th>
+                      <th>Acertos</th>
+                    </>
+                  ) : (
+                    <>
+                      <th>Placar</th>
+                      <th>Extras</th>
+                      <th>Total</th>
+                      <th>Exatos</th>
+                      <th>Acertos</th>
+                    </>
+                  )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {currentData.map((r, i) => (
+                  <tr key={isRound ? `${r.user_id}-${r.round_number}` : r.id} className={r.username === profile?.username ? 'my-row' : ''}>
+                    <td className="rank-pos">
+                      {i < 3 ? MEDALS[i] : <span className="rank-num">{r.position}</span>}
+                    </td>
+                    <td>
+                      <div className="rank-user">
+                        {r.username === profile?.username && <span className="you-tag">Você</span>}
+                        <span className="rank-username">{r.username}</span>
+                        {r.instagram && <a href={`https://instagram.com/${r.instagram.replace('@','')}`} target="_blank" rel="noreferrer" className="rank-ig">📷</a>}
+                      </div>
+                      {r.full_name && <div className="rank-fullname">{r.full_name}</div>}
+                    </td>
+                    <td className="rank-city">{r.city && r.state ? `${r.city}/${r.state}` : '-'}</td>
+                    {isRound ? (
+                      <>
+                        <td className="rank-total">{Number(r.round_points||0).toFixed(0)}</td>
+                        <td className="rank-exact">{r.exact_scores||0}</td>
+                        <td>{r.correct_winners||0}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td>{Number(r.score_points||0).toFixed(0)}</td>
+                        <td className="rank-extra">+{Number(r.extra_points||0).toFixed(2)}</td>
+                        <td className="rank-total">{Number(r.total_points||0).toFixed(2)}</td>
+                        <td className="rank-exact">{r.exact_scores||0}</td>
+                        <td>{r.correct_winners||0}</td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="ranking-legend">
         <strong>Critério de desempate:</strong> 1° Placares exatos · 2° Vencedores corretos · 3° Acerto do campeão · 4° Data de cadastro

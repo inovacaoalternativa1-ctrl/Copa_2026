@@ -1,3 +1,8 @@
+.ranking-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+.ranking-tab { padding: 8px 16px; border-radius: 999px; border: 1px solid var(--line); background: white; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s; font-family: 'Inter', sans-serif; }
+.ranking-tab:hover { border-color: var(--blue); color: var(--blue); }
+.ranking-tab.active { background: var(--blue); color: white; border-color: var(--blue); }
+
 .my-position {
   display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
   background: linear-gradient(135deg, var(--blue2), var(--blue));
@@ -25,6 +30,8 @@
 .ranking-legend { margin-top: 16px; font-size: 13px; color: var(--muted); padding: 12px 16px; background: white; border: 1px solid var(--line); border-radius: 12px; }
 
 @media(max-width: 600px) {
+  .ranking-tabs { gap: 6px; }
+  .ranking-tab { padding: 6px 12px; font-size: 12px; }
   .my-position { flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px 18px; }
   .my-pos-num { font-size: 44px; }
   .my-pos-stats { margin-left: 0; width: 100%; gap: 8px; }

@@ -50,6 +50,8 @@ export const adminGetMatchExtraPredictions = (matchId) =>
 
 // ===== RANKING =====
 export const getRanking = () => supabase.from('ranking').select('*').order('position').limit(200);
+export const getRoundRanking = (round) =>
+  supabase.from('ranking_by_round').select('*').eq('round_number', round).order('position').limit(100);
 
 // ===== CHAT =====
 export const getChatMessages = () => {
