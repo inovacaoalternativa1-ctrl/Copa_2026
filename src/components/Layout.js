@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
 import './Layout.css';
@@ -13,6 +13,10 @@ const getInitials = (name = '') => {
 export default function Layout() {
   const { user, profile, signOut, isAdmin, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isOnChat = location.pathname === '/chat';
+  const isOnChatRef = useRef(isOnChat);
+  const [unreadChat, setUnreadChat] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -24,6 +28,39 @@ export default function Layout() {
   const [savingUsername, setSavingUsername] = useState(false);
   const [usernameSaved, setUsernameSaved] = useState(false);
   const fileInputRef = useRef(null);
+
+  // ── Chat não lidas ───────────────────────────────────────────────────────
+  useEffect(() => { isOnChatRef.current = isOnChat; }, [isOnChat]);
+
+  useEffect(() => {
+    if (isOnChat) {
+      setUnreadChat(0);
+      localStorage.setItem('copa_chat_last_seen', new Date().toISOString());
+    }
+  }, [isOnChat]);
+
+  useEffect(() => {
+    const lastSeen = localStorage.getItem('copa_chat_last_seen');
+    if (lastSeen && !isOnChatRef.current) {
+      supabase
+        .from('chat_messages')
+        .select('id', { count: 'exact', head: true })
+        .neq('is_moderated', true)
+        .gt('created_at', lastSeen)
+        .then(({ count }) => setUnreadChat(count || 0));
+    }
+    const channel = supabase
+      .channel('chat-fab-tracker')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, payload => {
+        if (!payload.new.is_moderated && !isOnChatRef.current) {
+          setUnreadChat(prev => prev + 1);
+        }
+      })
+      .subscribe();
+    return () => channel.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // ────────────────────────────────────────────────────────────────────────
 
   const handleSignOut = async () => { await signOut(); navigate('/login'); };
 
@@ -194,6 +231,21 @@ export default function Layout() {
       <footer className="footer">
         <p>© 2026 Copa Simulada · Alternativa Serviços · Participação gratuita</p>
       </footer>
+
+      {/* Botão flutuante do Chat */}
+      {!isOnChat && (
+        <Link
+          to="/chat"
+          className="chat-fab"
+          title="Chat ao vivo"
+          onClick={() => setUnreadChat(0)}
+        >
+          💬
+          {unreadChat > 0 && (
+            <span className="chat-fab-badge">{unreadChat > 99 ? '99+' : unreadChat}</span>
+          )}
+        </Link>
+      )}
 
       {/* Modal de edição de perfil */}
       {showAvatarModal && (() => {

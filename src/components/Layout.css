@@ -128,6 +128,51 @@
 
 .footer { text-align: center; padding: 24px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); background: white; }
 
+/* ===== CHAT FAB ===== */
+.chat-fab {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0,74,173,.4);
+  z-index: 200;
+  text-decoration: none;
+  transition: transform .2s, box-shadow .2s;
+}
+.chat-fab:hover { transform: scale(1.1); box-shadow: 0 6px 22px rgba(0,74,173,.5); }
+.chat-fab-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  font-family: 'Inter', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  animation: badge-pop .25s ease;
+}
+@keyframes badge-pop {
+  0%   { transform: scale(0); }
+  70%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
 @media(max-width: 900px) {
   .nav-links { display: none; }
   .nav-links.open {
