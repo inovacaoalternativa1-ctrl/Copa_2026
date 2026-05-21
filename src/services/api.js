@@ -61,7 +61,7 @@ export const getChatMessages = () => {
   return supabase
     .from('chat_messages')
     .select('*, profiles(avatar_url)')
-    .neq('is_moderated', true)
+    .or('is_moderated.eq.false,is_moderated.is.null')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(100);

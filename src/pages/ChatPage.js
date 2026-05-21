@@ -156,7 +156,19 @@ export default function ChatPage() {
     const loadMessages = async () => {
       const { data, error } = await getChatMessages();
       if (error) { console.error('[Chat] Erro SELECT:', error.message); setLoading(false); return; }
-      applyMessages((data || []).reverse());
+      const msgs = (data || []).reverse();
+      if (msgs.length > 0) {
+        applyMessages(msgs);
+      } else {
+        // Só limpa o cache se não houver mensagens válidas salvas localmente
+        const cutoff = Date.now() - CUTOFF_MS;
+        try {
+          const saved = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]');
+          if (saved.filter(m => new Date(m.created_at).getTime() > cutoff).length === 0) {
+            applyMessages([]);
+          }
+        } catch (_) { applyMessages([]); }
+      }
       setLoading(false);
     };
 
