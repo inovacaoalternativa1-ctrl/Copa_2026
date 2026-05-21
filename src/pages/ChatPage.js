@@ -131,7 +131,8 @@ export default function ChatPage() {
 
   // ── Carregar mensagens + realtime ────────────────────────────────────────
   useEffect(() => {
-    getChatMessages().then(({ data, error }) => {
+    const loadMessages = async () => {
+      const { data, error } = await getChatMessages();
       if (error) console.error('[Chat] Erro SELECT:', error.message);
       const msgs = (data || []).reverse();
       setMessages(msgs);
@@ -140,7 +141,10 @@ export default function ChatPage() {
       avatarsCacheRef.current = { ...avatarsCacheRef.current, ...avatars };
       setUserAvatars(prev => ({ ...prev, ...avatars }));
       setLoading(false);
-    });
+    };
+
+    loadMessages();
+
     const channel = subscribeToChat(async payload => {
       if (!payload.new.is_moderated) {
         const msg = payload.new;
@@ -154,7 +158,16 @@ export default function ChatPage() {
         }
       }
     });
-    return () => channel.unsubscribe();
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadMessages();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      channel.unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
