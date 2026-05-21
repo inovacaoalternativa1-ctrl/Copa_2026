@@ -61,14 +61,14 @@ export const getChatMessages = () => {
   return supabase
     .from('chat_messages')
     .select('*, profiles(avatar_url)')
-    .eq('is_moderated', false)
+    .neq('is_moderated', true)
     .gte('created_at', since)
     .order('created_at', { ascending: false })
     .limit(100);
 };
 
 export const sendChatMessage = (userId, username, message) =>
-  supabase.from('chat_messages').insert({ user_id: userId, username, message });
+  supabase.from('chat_messages').insert({ user_id: userId, username, message, is_moderated: false });
 
 export const subscribeToChat = (callback) =>
   supabase.channel('chat').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, callback).subscribe();
