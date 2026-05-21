@@ -7,6 +7,7 @@ import {
 } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
+import { autoValidateMatchExtras } from '../services/autoExtras';
 import './AdminPage.css';
 
 const PHASE_LABELS = {
@@ -152,9 +153,11 @@ export default function AdminPage() {
     if (logoFileRef.current) logoFileRef.current.value = '';
   };
 
-  // Keep a ref to matches to use inside the interval without stale closure
+  // Keep refs to avoid stale closures inside interval/callback
   const matchesRef = useRef(matches);
   useEffect(() => { matchesRef.current = matches; }, [matches]);
+  const userRef = useRef(user);
+  useEffect(() => { userRef.current = user; }, [user]);
 
   const syncIntervalRef = useRef(null);
 
@@ -292,6 +295,8 @@ export default function AdminPage() {
         if (!error) {
           updated++;
           updatedNames.push(`${match.team_a} ${scoreA}×${scoreB} ${match.team_b}`);
+          // Auto-validate extras via API-Football (fire-and-forget, errors logged only)
+          autoValidateMatchExtras(supabase, match, userRef.current?.id).catch(() => {});
         }
       }
 
