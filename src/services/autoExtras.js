@@ -67,7 +67,7 @@ const findFixture = async (matchDate, teamA, teamB) => {
 };
 
 // Build official results for all 16 extra types
-const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId) => {
+const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB) => {
   const teamAId = homeIsTeamA ? homeTeamId : awayTeamId;
   const teamBId = homeIsTeamA ? awayTeamId : homeTeamId;
 
@@ -84,16 +84,18 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId) => {
                 : 'none';
   }
 
-  const hasYellowA  = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.team.id === teamAId);
-  const hasYellowB  = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.team.id === teamBId);
-  const isRed       = (e) => e.type === 'Card' && (e.detail === 'Red Card' || e.detail === 'Yellow Red Card');
-  const hasRedAny   = events.some(isRed);
-  const hasRedA     = events.some(e => isRed(e) && e.team.id === teamAId);
-  const hasRedB     = events.some(e => isRed(e) && e.team.id === teamBId);
-  const hasPenalty  = events.some(e => e.type === 'Goal' && (e.detail === 'Penalty' || e.detail === 'Missed Penalty'));
-  const hasOwnGoal  = goals.some(e => e.detail === 'Own Goal');
-  const hasAET      = status === 'AET' || status === 'PEN';
-  const hasPEN      = status === 'PEN';
+  const hasYellowA    = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.team.id === teamAId);
+  const hasYellowB    = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.team.id === teamBId);
+  const totalYellows  = events.filter(e => e.type === 'Card' && e.detail === 'Yellow Card').length;
+  const isRed         = (e) => e.type === 'Card' && (e.detail === 'Red Card' || e.detail === 'Yellow Red Card');
+  const hasRedAny     = events.some(isRed);
+  const hasRedA       = events.some(e => isRed(e) && e.team.id === teamAId);
+  const hasRedB       = events.some(e => isRed(e) && e.team.id === teamBId);
+  const hasPenalty    = events.some(e => e.type === 'Goal' && (e.detail === 'Penalty' || e.detail === 'Missed Penalty'));
+  const hasOwnGoal    = goals.some(e => e.detail === 'Own Goal');
+  const hasAET        = status === 'AET' || status === 'PEN';
+  const hasPEN        = status === 'PEN';
+  const bothScore     = scoreA > 0 && scoreB > 0;
 
   return {
     1:  yn(h1Goals.length > 0),                              // Gol no Primeiro Tempo
@@ -107,8 +109,8 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId) => {
     9:  yn(hasRedA),                                         // Cartão Vermelho - Time A
     10: yn(hasRedB),                                         // Cartão Vermelho - Time B
     11: yn(hasPenalty),                                      // Pênalti no Jogo
-    // 12: Gol de Cabeça  → não disponível na API, validação manual
-    // 13: Gol de Falta   → não disponível na API, validação manual
+    12: yn(bothScore),                                       // Ambos os Times Marcam
+    13: yn(totalYellows >= 4),                               // Mais de 3 Cartões Amarelos
     14: yn(hasOwnGoal),                                      // Gol Contra
     15: yn(hasAET),                                          // Prorrogação
     16: yn(hasPEN),                                          // Disputa de Pênaltis
@@ -120,11 +122,14 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId) => {
  * Call this right after adminSetMatchResult succeeds.
  *
  * @param {object} supabase  - Supabase client
+ * @param {object} supabase  - Supabase client
  * @param {object} match     - Supabase match row (needs id, team_a, team_b, match_date)
+ * @param {number} scoreA    - Final score team A
+ * @param {number} scoreB    - Final score team B
  * @param {string} adminId   - Admin user ID
  * @returns {{ validated: number[], skipped: number[] }}
  */
-export const autoValidateMatchExtras = async (supabase, match, adminId) => {
+export const autoValidateMatchExtras = async (supabase, match, scoreA, scoreB, adminId) => {
   if (!API_KEY) {
     console.warn('[autoExtras] REACT_APP_API_FOOTBALL_KEY não configurada — pulando validação automática de extras');
     return { validated: [], skipped: [] };
@@ -142,10 +147,10 @@ export const autoValidateMatchExtras = async (supabase, match, adminId) => {
     const eventsData = await apiFetch(`/fixtures/events?fixture=${fixtureId}`);
     const events = eventsData.response || [];
 
-    const results = buildResults(events, status, homeIsTeamA, homeTeamId, awayTeamId);
+    const results = buildResults(events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB);
 
     const validated = [];
-    const skipped   = [12, 13]; // header & free kick — manual only
+    const skipped   = [];
 
     for (const [typeIdStr, result] of Object.entries(results)) {
       const typeId = parseInt(typeIdStr);

@@ -296,7 +296,7 @@ export default function AdminPage() {
           updated++;
           updatedNames.push(`${match.team_a} ${scoreA}×${scoreB} ${match.team_b}`);
           // Auto-validate extras via API-Football (fire-and-forget, errors logged only)
-          autoValidateMatchExtras(supabase, match, userRef.current?.id).catch(() => {});
+          autoValidateMatchExtras(supabase, match, scoreA, scoreB, userRef.current?.id).catch(() => {});
         }
       }
 
