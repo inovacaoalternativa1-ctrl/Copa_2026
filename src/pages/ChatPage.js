@@ -130,7 +130,8 @@ export default function ChatPage() {
   const [userAvatars, setUserAvatars] = useState({});
 
   // ── Carregar mensagens + realtime ────────────────────────────────────────
-  const SESSION_KEY = 'copa_chat_cache';
+  const CACHE_KEY = 'copa_chat_cache';
+  const CUTOFF_MS = 24 * 60 * 60 * 1000;
 
   const applyMessages = (msgs) => {
     setMessages(msgs);
@@ -138,17 +139,17 @@ export default function ChatPage() {
     msgs.forEach(m => { if (!(m.user_id in avatars)) avatars[m.user_id] = m.profiles?.avatar_url || null; });
     avatarsCacheRef.current = { ...avatarsCacheRef.current, ...avatars };
     setUserAvatars(prev => ({ ...prev, ...avatars }));
-    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(msgs)); } catch (_) {}
+    try { localStorage.setItem(CACHE_KEY, JSON.stringify(msgs)); } catch (_) {}
   };
 
   useEffect(() => {
-    // Exibe cache do sessionStorage imediatamente (evita tela vazia ao navegar de volta)
+    // Exibe cache do localStorage imediatamente (persiste entre sessões, até 24h)
     try {
-      const cached = sessionStorage.getItem(SESSION_KEY);
+      const cached = localStorage.getItem(CACHE_KEY);
       if (cached) {
-        const msgs = JSON.parse(cached);
-        applyMessages(msgs);
-        setLoading(false);
+        const cutoff = Date.now() - CUTOFF_MS;
+        const msgs = JSON.parse(cached).filter(m => new Date(m.created_at).getTime() > cutoff);
+        if (msgs.length > 0) { applyMessages(msgs); setLoading(false); }
       }
     } catch (_) {}
 
@@ -166,7 +167,7 @@ export default function ChatPage() {
         const msg = payload.new;
         setMessages(prev => {
           const updated = [...prev, msg];
-          try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated)); } catch (_) {}
+          try { localStorage.setItem(CACHE_KEY, JSON.stringify(updated)); } catch (_) {}
           return updated;
         });
         if (!(msg.user_id in avatarsCacheRef.current)) {
