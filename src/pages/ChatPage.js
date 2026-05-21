@@ -130,16 +130,32 @@ export default function ChatPage() {
   const [userAvatars, setUserAvatars] = useState({});
 
   // ── Carregar mensagens + realtime ────────────────────────────────────────
+  const SESSION_KEY = 'copa_chat_cache';
+
+  const applyMessages = (msgs) => {
+    setMessages(msgs);
+    const avatars = {};
+    msgs.forEach(m => { if (!(m.user_id in avatars)) avatars[m.user_id] = m.profiles?.avatar_url || null; });
+    avatarsCacheRef.current = { ...avatarsCacheRef.current, ...avatars };
+    setUserAvatars(prev => ({ ...prev, ...avatars }));
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(msgs)); } catch (_) {}
+  };
+
   useEffect(() => {
+    // Exibe cache do sessionStorage imediatamente (evita tela vazia ao navegar de volta)
+    try {
+      const cached = sessionStorage.getItem(SESSION_KEY);
+      if (cached) {
+        const msgs = JSON.parse(cached);
+        applyMessages(msgs);
+        setLoading(false);
+      }
+    } catch (_) {}
+
     const loadMessages = async () => {
       const { data, error } = await getChatMessages();
-      if (error) console.error('[Chat] Erro SELECT:', error.message);
-      const msgs = (data || []).reverse();
-      setMessages(msgs);
-      const avatars = {};
-      msgs.forEach(m => { if (!(m.user_id in avatars)) avatars[m.user_id] = m.profiles?.avatar_url || null; });
-      avatarsCacheRef.current = { ...avatarsCacheRef.current, ...avatars };
-      setUserAvatars(prev => ({ ...prev, ...avatars }));
+      if (error) { console.error('[Chat] Erro SELECT:', error.message); setLoading(false); return; }
+      applyMessages((data || []).reverse());
       setLoading(false);
     };
 
@@ -148,7 +164,11 @@ export default function ChatPage() {
     const channel = subscribeToChat(async payload => {
       if (!payload.new.is_moderated) {
         const msg = payload.new;
-        setMessages(prev => [...prev, msg]);
+        setMessages(prev => {
+          const updated = [...prev, msg];
+          try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated)); } catch (_) {}
+          return updated;
+        });
         if (!(msg.user_id in avatarsCacheRef.current)) {
           avatarsCacheRef.current[msg.user_id] = null;
           const { data } = await supabase.from('profiles').select('avatar_url').eq('id', msg.user_id).single();
@@ -168,6 +188,7 @@ export default function ChatPage() {
       channel.unsubscribe();
       document.removeEventListener('visibilitychange', handleVisibility);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
