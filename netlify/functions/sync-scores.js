@@ -136,6 +136,15 @@ exports.handler = async () => {
   const { data: matches } = await supabase.from('matches').select('*').eq('is_finished', false);
   if (!matches?.length) return { statusCode: 200, body: 'Nenhum jogo pendente' };
 
+  // Só prossegue se houver jogo dentro da janela ativa:
+  // começou há menos de 3h OU começa nos próximos 30 min
+  const now = Date.now();
+  const hasActiveWindow = matches.some(m => {
+    const diff = (now - new Date(m.match_date).getTime()) / 60000; // minutos desde o início
+    return diff >= -30 && diff <= 180;
+  });
+  if (!hasActiveWindow) return { statusCode: 200, body: 'Nenhum jogo na janela ativa' };
+
   // Consulta ESPN
   let espnData;
   try {
