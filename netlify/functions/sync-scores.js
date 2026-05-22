@@ -164,7 +164,7 @@ exports.handler = async () => {
   );
   if (!completed.length) return { statusCode: 200, body: 'Nenhum jogo encerrado na ESPN' };
 
-  const { data: subs } = await supabase.from('push_subscriptions').select('*');
+  const { data: subs } = await supabase.from('push_subscriptions').select('id, endpoint, p256dh, auth');
   const updated = [];
 
   for (const ev of completed) {
@@ -209,7 +209,10 @@ exports.handler = async () => {
     });
     for (const sub of (subs||[])) {
       try {
-        await webpush.sendNotification(sub.subscription, payload);
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          payload
+        );
       } catch(e) {
         if (e.statusCode===410)
           await supabase.from('push_subscriptions').delete().eq('id', sub.id);
