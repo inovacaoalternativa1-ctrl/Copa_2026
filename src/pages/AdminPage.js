@@ -8,6 +8,17 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
 import { autoValidateMatchExtras } from '../services/autoExtras';
+
+const sendScorePush = (teamA, sA, sB, teamB) => {
+  fetch('/.netlify/functions/send-push', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      title: '⚽ Placar Atualizado!',
+      body: `${teamA} ${sA} × ${sB} ${teamB}`,
+    }),
+  }).catch(() => {});
+};
 import './AdminPage.css';
 
 const PHASE_LABELS = {
@@ -204,6 +215,7 @@ export default function AdminPage() {
     try {
       const { error: e1 } = await adminSetMatchResult(parseInt(selMatchId), parseInt(resA), parseInt(resB));
       if (e1) throw new Error(e1.message);
+      sendScorePush(selMatch.team_a, parseInt(resA), parseInt(resB), selMatch.team_b);
 
       if (selMatch?.phase === 'groups' && roundNum) {
         const { error: e3 } = await adminUpdateMatch(parseInt(selMatchId), { round_number: parseInt(roundNum) });
@@ -295,7 +307,7 @@ export default function AdminPage() {
         if (!error) {
           updated++;
           updatedNames.push(`${match.team_a} ${scoreA}×${scoreB} ${match.team_b}`);
-          // Auto-validate extras via API-Football (fire-and-forget, errors logged only)
+          sendScorePush(match.team_a, scoreA, scoreB, match.team_b);
           autoValidateMatchExtras(supabase, match, scoreA, scoreB, userRef.current?.id).catch(() => {});
         }
       }

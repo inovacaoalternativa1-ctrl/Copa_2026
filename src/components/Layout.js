@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
+import { usePush } from '../hooks/usePush';
 import './Layout.css';
 
 const getInitials = (name = '') => {
@@ -17,6 +18,7 @@ export default function Layout() {
   const isOnChat = location.pathname === '/chat';
   const isOnChatRef = useRef(isOnChat);
   const [unreadChat, setUnreadChat] = useState(0);
+  const { isSupported: pushSupported, permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, toggle: pushToggle } = usePush();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -208,6 +210,16 @@ export default function Layout() {
           </nav>
 
           <div className="nav-user">
+            {pushSupported && pushPermission !== 'denied' && (
+              <button
+                className={`push-bell-btn ${pushSubscribed ? 'active' : ''}`}
+                onClick={pushToggle}
+                disabled={pushLoading}
+                title={pushSubscribed ? 'Desativar notificações de placar' : 'Ativar notificações de placar'}
+              >
+                {pushSubscribed ? '🔔' : '🔕'}
+              </button>
+            )}
             <button
               className="nav-avatar-btn"
               onClick={() => setShowAvatarModal(true)}
