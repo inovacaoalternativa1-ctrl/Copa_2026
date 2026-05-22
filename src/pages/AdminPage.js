@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
 import { autoValidateMatchExtras } from '../services/autoExtras';
+import './AdminPage.css';
 
 const sendScorePush = (teamA, sA, sB, teamB) => {
   fetch('/.netlify/functions/send-push', {
@@ -19,7 +20,6 @@ const sendScorePush = (teamA, sA, sB, teamB) => {
     }),
   }).catch(() => {});
 };
-import './AdminPage.css';
 
 const PHASE_LABELS = {
   groups: 'Grupos', round_of_16: 'Oitavas', quarterfinals: 'Quartas',
