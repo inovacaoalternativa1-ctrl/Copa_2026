@@ -60,8 +60,7 @@ export default function Layout() {
       })
       .subscribe();
     return () => channel.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // eslint-disable-line
   // ────────────────────────────────────────────────────────────────────────
 
   const handleSignOut = async () => { await signOut(); navigate('/login'); };

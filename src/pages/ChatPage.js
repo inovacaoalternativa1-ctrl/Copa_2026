@@ -201,8 +201,7 @@ export default function ChatPage() {
       channel.unsubscribe();
       document.removeEventListener('visibilitychange', handleVisibility);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // eslint-disable-line
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
