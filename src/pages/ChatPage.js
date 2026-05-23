@@ -135,11 +135,20 @@ export default function ChatPage() {
 
   const applyMessages = (msgs) => {
     setMessages(msgs);
-    const avatars = {};
-    msgs.forEach(m => { if (!(m.user_id in avatars)) avatars[m.user_id] = m.profiles?.avatar_url || null; });
-    avatarsCacheRef.current = { ...avatarsCacheRef.current, ...avatars };
-    setUserAvatars(prev => ({ ...prev, ...avatars }));
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(msgs)); } catch (_) {}
+  };
+
+  const loadAvatars = async (msgs) => {
+    const newIds = [...new Set(msgs.map(m => m.user_id))]
+      .filter(id => !(id in avatarsCacheRef.current));
+    if (!newIds.length) return;
+    newIds.forEach(id => { avatarsCacheRef.current[id] = null; });
+    const { data } = await supabase.from('profiles').select('id, avatar_url').in('id', newIds);
+    if (!data?.length) return;
+    const updates = {};
+    data.forEach(p => { updates[p.id] = p.avatar_url || null; });
+    avatarsCacheRef.current = { ...avatarsCacheRef.current, ...updates };
+    setUserAvatars(prev => ({ ...prev, ...updates }));
   };
 
   useEffect(() => {
@@ -149,7 +158,7 @@ export default function ChatPage() {
       if (cached) {
         const cutoff = Date.now() - CUTOFF_MS;
         const msgs = JSON.parse(cached).filter(m => new Date(m.created_at).getTime() > cutoff);
-        if (msgs.length > 0) { applyMessages(msgs); setLoading(false); }
+        if (msgs.length > 0) { applyMessages(msgs); loadAvatars(msgs); setLoading(false); }
       }
     } catch (_) {}
 
@@ -159,6 +168,7 @@ export default function ChatPage() {
       const msgs = (data || []).reverse();
       if (msgs.length > 0) {
         applyMessages(msgs);
+        loadAvatars(msgs);
       } else {
         // Só limpa o cache se não houver mensagens válidas salvas localmente
         const cutoff = Date.now() - CUTOFF_MS;
@@ -221,11 +231,8 @@ export default function ChatPage() {
     prevUsernameRef.current = profile.username;
     getChatMessages().then(({ data }) => {
       const msgs = (data || []).reverse();
-      setMessages(msgs);
-      const avatars = {};
-      msgs.forEach(m => { if (!(m.user_id in avatars)) avatars[m.user_id] = m.profiles?.avatar_url || null; });
-      avatarsCacheRef.current = { ...avatarsCacheRef.current, ...avatars };
-      setUserAvatars(prev => ({ ...prev, ...avatars }));
+      applyMessages(msgs);
+      loadAvatars(msgs);
     });
   }, [profile?.username]);
 

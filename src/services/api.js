@@ -60,7 +60,7 @@ export const getChatMessages = () => {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   return supabase
     .from('chat_messages')
-    .select('*, profiles(avatar_url)')
+    .select('*')
     .or('is_moderated.eq.false,is_moderated.is.null')
     .gte('created_at', since)
     .order('created_at', { ascending: false })
