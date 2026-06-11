@@ -49,7 +49,7 @@ export const adminGetMatchExtraPredictions = (matchId) =>
     .eq('match_id', matchId);
 
 // ===== RANKING =====
-export const getRanking = () => supabase.from('ranking').select('*').order('position').limit(200);
+export const getRanking = () => supabase.from('ranking').select('*').order('position');
 export const getRoundRanking = (round) =>
   supabase.from('ranking_by_round').select('*').eq('round_number', round).order('position').limit(100);
 export const getPhaseRanking = (phase) =>
