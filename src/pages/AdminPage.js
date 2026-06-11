@@ -256,7 +256,9 @@ export default function AdminPage() {
       // Chama a função Netlify diretamente — ela usa API-Football e tem a service key
       const res = await fetch('/.netlify/functions/sync-scores', { cache: 'no-store' });
       if (!res.ok) throw new Error(`Função retornou ${res.status}`);
-      const json = await res.json();
+      const text = await res.text();
+      let json = {};
+      try { json = JSON.parse(text); } catch (_) { json = { body: text }; }
 
       const { data: freshMatches } = await getMatches();
       if (freshMatches) setMatches(freshMatches);

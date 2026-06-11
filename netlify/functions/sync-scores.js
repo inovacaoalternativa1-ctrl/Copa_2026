@@ -134,20 +134,19 @@ exports.handler = async () => {
 
   // Busca jogos ainda não encerrados
   const { data: matches } = await supabase.from('matches').select('*').eq('is_finished', false);
-  if (!matches?.length) return { statusCode: 200, body: 'Nenhum jogo pendente' };
+  if (!matches?.length) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo pendente' }) };
 
-  // Só prossegue se houver jogo dentro da janela ativa:
-  // começou há menos de 3h OU começa nos próximos 30 min
+  // Filtra apenas jogos que já começaram (ou começam em até 30 min) — sem limite máximo
   const now = Date.now();
-  const hasActiveWindow = matches.some(m => {
-    const diff = (now - new Date(m.match_date).getTime()) / 60000; // minutos desde o início
-    return diff >= -30 && diff <= 180;
+  const activeMatches = matches.filter(m => {
+    const diff = (now - new Date(m.match_date).getTime()) / 60000;
+    return diff >= -30; // já começou ou começa em breve
   });
-  if (!hasActiveWindow) return { statusCode: 200, body: 'Nenhum jogo na janela ativa' };
+  if (!activeMatches.length) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo iniciado ainda' }) };
 
   // ── API-Football: fixtures ao vivo na Copa 2026 ──────────────────────────
   const AF_KEY = process.env.REACT_APP_API_FOOTBALL_KEY;
-  if (!AF_KEY) return { statusCode: 200, body: 'REACT_APP_API_FOOTBALL_KEY não configurada' };
+  if (!AF_KEY) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'REACT_APP_API_FOOTBALL_KEY não configurada' }) };
 
   // Mapeamento reverso: nome em inglês → nome no banco
   const API_TO_DB = Object.fromEntries(Object.entries(DB_TO_API).map(([db, en]) => [en, db]));
@@ -166,23 +165,23 @@ exports.handler = async () => {
       fixtures = liveData.response || [];
     }
 
-    // Se não há ao vivo, tenta pegar jogos encerrados hoje
+    // Se não há ao vivo, busca encerrados hoje E ontem (cobre jogos que terminaram dia anterior)
     if (!fixtures.length) {
       const today = new Date().toISOString().split('T')[0];
-      const doneRes = await fetch(
-        `https://v3.football.api-sports.io/fixtures?date=${today}&league=1&season=2026`,
-        { headers: { 'x-apisports-key': AF_KEY } }
-      );
-      if (doneRes.ok) {
-        const doneData = await doneRes.json();
-        fixtures = (doneData.response || []).filter(f => COMPLETED.has(f.fixture.status.short));
-      }
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const [doneToday, doneYesterday] = await Promise.all([
+        fetch(`https://v3.football.api-sports.io/fixtures?date=${today}&league=1&season=2026`, { headers: { 'x-apisports-key': AF_KEY } }),
+        fetch(`https://v3.football.api-sports.io/fixtures?date=${yesterday}&league=1&season=2026`, { headers: { 'x-apisports-key': AF_KEY } }),
+      ]);
+      const todayData   = doneToday.ok   ? ((await doneToday.json()).response   || []) : [];
+      const yesterdayData = doneYesterday.ok ? ((await doneYesterday.json()).response || []) : [];
+      fixtures = [...todayData, ...yesterdayData].filter(f => COMPLETED.has(f.fixture.status.short));
     }
   } catch(e) {
-    return { statusCode: 500, body: `API-Football erro: ${e.message}` };
+    return { statusCode: 500, body: JSON.stringify({ updated: 0, matches: [], body: `API-Football erro: ${e.message}` }) };
   }
 
-  if (!fixtures.length) return { statusCode: 200, body: 'Nenhum jogo ativo na API-Football' };
+  if (!fixtures.length) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo ativo na API-Football' }) };
 
   const { data: subs } = await supabase.from('push_subscriptions').select('id, endpoint, p256dh, auth');
   const updated = [];
@@ -198,7 +197,7 @@ exports.handler = async () => {
     const homeNameDb = API_TO_DB[homeNameEn] || homeNameEn;
     const awayNameDb = API_TO_DB[awayNameEn] || awayNameEn;
 
-    const match = matches.find(m =>
+    const match = activeMatches.find(m =>
       (m.team_a === homeNameDb && m.team_b === awayNameDb) ||
       (m.team_a === awayNameDb && m.team_b === homeNameDb)
     );
