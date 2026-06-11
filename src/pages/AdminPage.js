@@ -264,20 +264,23 @@ export default function AdminPage() {
       }
       const json = await res.json();
 
-      const completed = (json.events || []).filter(ev =>
-        ev.competitions?.[0]?.status?.type?.completed === true
-      );
+      // Processa jogos encerrados E em andamento
+      const activeGames = (json.events || []).filter(ev => {
+        const s = ev.competitions?.[0]?.status?.type;
+        return s?.completed === true || s?.state === 'in';
+      });
 
-      if (completed.length === 0) {
-        setSyncStatus({ ok: true, msg: 'Nenhum resultado novo na API.', time: new Date(), syncing: false });
+      if (activeGames.length === 0) {
+        setSyncStatus({ ok: true, msg: 'Nenhum jogo ativo na ESPN agora.', time: new Date(), syncing: false });
         return;
       }
 
       let updated = 0;
       const updatedNames = [];
 
-      for (const ev of completed) {
+      for (const ev of activeGames) {
         const comp = ev.competitions[0];
+        const isCompleted = comp.status?.type?.completed === true;
         const homeC = comp.competitors.find(c => c.homeAway === 'home');
         const awayC = comp.competitors.find(c => c.homeAway === 'away');
         if (!homeC || !awayC) continue;
@@ -303,12 +306,23 @@ export default function AdminPage() {
         if (candidates.length !== 1) continue;
         const match = candidates[0];
 
-        const { error } = await adminSetMatchResult(match.id, scoreA, scoreB);
-        if (!error) {
-          updated++;
-          updatedNames.push(`${match.team_a} ${scoreA}×${scoreB} ${match.team_b}`);
-          sendScorePush(match.team_a, scoreA, scoreB, match.team_b);
-          autoValidateMatchExtras(supabase, match, scoreA, scoreB, userRef.current?.id).catch(() => {});
+        if (isCompleted) {
+          const { error } = await adminSetMatchResult(match.id, scoreA, scoreB);
+          if (!error) {
+            updated++;
+            updatedNames.push(`${match.team_a} ${scoreA}×${scoreB} ${match.team_b}`);
+            sendScorePush(match.team_a, scoreA, scoreB, match.team_b);
+            autoValidateMatchExtras(supabase, match, scoreA, scoreB, userRef.current?.id).catch(() => {});
+          }
+        } else {
+          // Jogo ao vivo: só atualiza placar e trava palpites
+          const { error } = await supabase.from('matches').update({
+            score_a: scoreA, score_b: scoreB, is_locked: true,
+          }).eq('id', match.id);
+          if (!error) {
+            updated++;
+            updatedNames.push(`🔴 ${match.team_a} ${scoreA}×${scoreB} ${match.team_b} (ao vivo)`);
+          }
         }
       }
 

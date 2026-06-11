@@ -163,7 +163,6 @@ export const adminSetMatchResult = async (matchId, scoreA, scoreB) => {
   return supabase.from('matches').update({
     score_a: scoreA, score_b: scoreB,
     is_finished: true, is_locked: true,
-    updated_at: new Date().toISOString()
   }).eq('id', matchId);
 };
 
