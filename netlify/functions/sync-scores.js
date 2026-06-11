@@ -196,7 +196,6 @@ exports.handler = async () => {
       score_a: scoreA, score_b: scoreB,
       is_finished: isCompleted,
       is_locked: true,
-      updated_at: new Date().toISOString(),
     }).eq('id', match.id);
 
     if (error) { console.error('[sync-scores] update error:', error.message); continue; }
