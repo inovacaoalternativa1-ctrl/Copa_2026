@@ -145,52 +145,71 @@ exports.handler = async () => {
   });
   if (!hasActiveWindow) return { statusCode: 200, body: 'Nenhum jogo na janela ativa' };
 
-  // Consulta ESPN
-  let espnData;
+  // ── API-Football: fixtures ao vivo na Copa 2026 ──────────────────────────
+  const AF_KEY = process.env.REACT_APP_API_FOOTBALL_KEY;
+  if (!AF_KEY) return { statusCode: 200, body: 'REACT_APP_API_FOOTBALL_KEY não configurada' };
+
+  // Mapeamento reverso: nome em inglês → nome no banco
+  const API_TO_DB = Object.fromEntries(Object.entries(DB_TO_API).map(([db, en]) => [en, db]));
+  const COMPLETED = new Set(['FT','AET','PEN']);
+  const LIVE      = new Set(['1H','HT','2H','ET','BT','P','LIVE']);
+
+  let fixtures = [];
   try {
-    const res = await fetch(ESPN_URL);
-    if (!res.ok) {
-      if (res.status===400 || res.status===404)
-        return { statusCode: 200, body: 'Sem jogos ao vivo hoje' };
-      return { statusCode: 200, body: `ESPN ${res.status}` };
+    // Busca jogos ao vivo na Copa 2026
+    const liveRes = await fetch(
+      'https://v3.football.api-sports.io/fixtures?live=all&league=1',
+      { headers: { 'x-apisports-key': AF_KEY } }
+    );
+    if (liveRes.ok) {
+      const liveData = await liveRes.json();
+      fixtures = liveData.response || [];
     }
-    espnData = await res.json();
+
+    // Se não há ao vivo, tenta pegar jogos encerrados hoje
+    if (!fixtures.length) {
+      const today = new Date().toISOString().split('T')[0];
+      const doneRes = await fetch(
+        `https://v3.football.api-sports.io/fixtures?date=${today}&league=1&season=2026`,
+        { headers: { 'x-apisports-key': AF_KEY } }
+      );
+      if (doneRes.ok) {
+        const doneData = await doneRes.json();
+        fixtures = (doneData.response || []).filter(f => COMPLETED.has(f.fixture.status.short));
+      }
+    }
   } catch(e) {
-    return { statusCode: 500, body: e.message };
+    return { statusCode: 500, body: `API-Football erro: ${e.message}` };
   }
 
-  // Jogos encerrados E em andamento
-  const activeGames = (espnData.events||[]).filter(ev => {
-    const s = ev.competitions?.[0]?.status?.type;
-    return s?.completed === true || s?.state === 'in';
-  });
-  if (!activeGames.length) return { statusCode: 200, body: 'Nenhum jogo ativo na ESPN' };
+  if (!fixtures.length) return { statusCode: 200, body: 'Nenhum jogo ativo na API-Football' };
 
   const { data: subs } = await supabase.from('push_subscriptions').select('id, endpoint, p256dh, auth');
   const updated = [];
 
-  for (const ev of activeGames) {
-    const comp = ev.competitions[0];
-    const isCompleted = comp.status?.type?.completed === true;
-    const homeC = comp.competitors.find(c=>c.homeAway==='home');
-    const awayC = comp.competitors.find(c=>c.homeAway==='away');
-    if (!homeC||!awayC) continue;
+  for (const f of fixtures) {
+    const status      = f.fixture.status.short;
+    const isCompleted = COMPLETED.has(status);
+    const isLive      = LIVE.has(status);
+    if (!isCompleted && !isLive) continue;
 
-    const evTime = new Date(ev.date).getTime();
-    const scoreA = parseInt(homeC.score)||0;
-    const scoreB = parseInt(awayC.score)||0;
+    const homeNameEn = f.teams.home.name;
+    const awayNameEn = f.teams.away.name;
+    const homeNameDb = API_TO_DB[homeNameEn] || homeNameEn;
+    const awayNameDb = API_TO_DB[awayNameEn] || awayNameEn;
 
-    let candidates = matches.filter(
-      m => Math.abs(new Date(m.match_date).getTime()-evTime)/60000 < 150
+    const match = matches.find(m =>
+      (m.team_a === homeNameDb && m.team_b === awayNameDb) ||
+      (m.team_a === awayNameDb && m.team_b === homeNameDb)
     );
-    if (candidates.length>1) {
-      const narrow = candidates.filter(
-        m => teamsMatch(m, homeC.team.abbreviation, awayC.team.abbreviation)
-      );
-      if (narrow.length===1) candidates = narrow;
+    if (!match) {
+      console.warn(`[sync-scores] sem match para: ${homeNameEn} vs ${awayNameEn}`);
+      continue;
     }
-    if (candidates.length!==1) continue;
-    const match = candidates[0];
+
+    const homeIsTeamA = match.team_a === homeNameDb;
+    const scoreA = homeIsTeamA ? (f.goals.home ?? 0) : (f.goals.away ?? 0);
+    const scoreB = homeIsTeamA ? (f.goals.away ?? 0) : (f.goals.home ?? 0);
 
     const { error } = await supabase.from('matches').update({
       score_a: scoreA, score_b: scoreB,
@@ -204,7 +223,7 @@ exports.handler = async () => {
       updated.push({ match, scoreA, scoreB });
       await autoValidateExtras(supabase, match, scoreA, scoreB);
     } else {
-      console.log(`[sync-scores] placar ao vivo: ${match.team_a} ${scoreA}×${scoreB} ${match.team_b}`);
+      console.log(`[sync-scores] ao vivo (${status}): ${match.team_a} ${scoreA}×${scoreB} ${match.team_b}`);
     }
   }
 
