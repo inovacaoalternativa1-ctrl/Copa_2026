@@ -243,7 +243,7 @@ export default function AdminPage() {
     }
   };
 
-  // ── ESPN auto-sync ────────────────────────────────────────────────
+  // ── Sync via Netlify function (API-Football) ─────────────────────────────
   const syncScores = useCallback(async (silent = false) => {
     if (!silent) setSyncStatus(s => ({ ...s, syncing: true }));
     const currentMatches = matchesRef.current;
@@ -253,88 +253,18 @@ export default function AdminPage() {
       return;
     }
     try {
-      const res = await fetch(ESPN_URL, { cache: 'no-store' });
-      if (!res.ok) {
-        // 400/404 = no matches scheduled today (pre-tournament or off-day) — not a real error
-        if (res.status === 400 || res.status === 404) {
-          setSyncStatus({ ok: true, msg: 'Nenhum jogo ao vivo no momento.', time: new Date(), syncing: false });
-          return;
-        }
-        throw new Error(`ESPN retornou ${res.status}`);
-      }
+      // Chama a função Netlify diretamente — ela usa API-Football e tem a service key
+      const res = await fetch('/.netlify/functions/sync-scores', { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Função retornou ${res.status}`);
       const json = await res.json();
-
-      // Processa jogos encerrados E em andamento
-      const activeGames = (json.events || []).filter(ev => {
-        const s = ev.competitions?.[0]?.status?.type;
-        return s?.completed === true || s?.state === 'in';
-      });
-
-      if (activeGames.length === 0) {
-        setSyncStatus({ ok: true, msg: 'Nenhum jogo ativo na ESPN agora.', time: new Date(), syncing: false });
-        return;
-      }
-
-      let updated = 0;
-      const updatedNames = [];
-
-      for (const ev of activeGames) {
-        const comp = ev.competitions[0];
-        const isCompleted = comp.status?.type?.completed === true;
-        const homeC = comp.competitors.find(c => c.homeAway === 'home');
-        const awayC = comp.competitors.find(c => c.homeAway === 'away');
-        if (!homeC || !awayC) continue;
-
-        const evTime = new Date(ev.date).getTime();
-        const scoreA = parseInt(homeC.score) || 0;
-        const scoreB = parseInt(awayC.score) || 0;
-        const homeAbbr = homeC.team.abbreviation;
-        const awayAbbr = awayC.team.abbreviation;
-
-        // Step 1: find candidates within ±150 min of kickoff
-        let candidates = unfinished.filter(m => {
-          const diff = Math.abs(new Date(m.match_date).getTime() - evTime) / 60000;
-          return diff < 150;
-        });
-
-        // Step 2: if multiple (simultaneous group games), narrow by team flags
-        if (candidates.length > 1) {
-          const narrow = candidates.filter(m => teamsMatch(m, homeAbbr, awayAbbr));
-          if (narrow.length === 1) candidates = narrow;
-        }
-
-        if (candidates.length !== 1) continue;
-        const match = candidates[0];
-
-        if (isCompleted) {
-          const { error } = await adminSetMatchResult(match.id, scoreA, scoreB);
-          if (!error) {
-            updated++;
-            updatedNames.push(`${match.team_a} ${scoreA}×${scoreB} ${match.team_b}`);
-            sendScorePush(match.team_a, scoreA, scoreB, match.team_b);
-            autoValidateMatchExtras(supabase, match, scoreA, scoreB, userRef.current?.id).catch(() => {});
-          }
-        } else {
-          // Jogo ao vivo: só atualiza placar e trava palpites
-          const { error } = await supabase.from('matches').update({
-            score_a: scoreA, score_b: scoreB, is_locked: true,
-          }).eq('id', match.id);
-          if (!error) {
-            updated++;
-            updatedNames.push(`🔴 ${match.team_a} ${scoreA}×${scoreB} ${match.team_b} (ao vivo)`);
-          }
-        }
-      }
 
       const { data: freshMatches } = await getMatches();
       if (freshMatches) setMatches(freshMatches);
 
-      if (updated > 0) {
-        setSyncStatus({ ok: true, msg: `🎯 ${updated} resultado(s) sincronizado(s): ${updatedNames.join(' · ')}`, time: new Date(), syncing: false });
-        setStatus({ type: 'success', msg: `🔄 Sincronizado automaticamente: ${updatedNames.join(' · ')}` });
-      } else {
-        setSyncStatus({ ok: true, msg: 'Nenhum resultado novo encontrado.', time: new Date(), syncing: false });
-      }
+      const body = json.matches?.length
+        ? `🎯 ${json.updated} atualizado(s): ${json.matches.join(' · ')}`
+        : (json.body || 'Nenhum jogo ativo no momento.');
+      setSyncStatus({ ok: true, msg: body, time: new Date(), syncing: false });
     } catch (e) {
       setSyncStatus({ ok: false, msg: `Falha na sincronização: ${e.message}`, time: new Date(), syncing: false });
     }
