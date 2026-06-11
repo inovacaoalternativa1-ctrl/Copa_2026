@@ -249,7 +249,10 @@
   .sticker-panel { left: 0; right: 0; margin: 0 8px; min-width: unset; }
   .sticker-thumb img { width: 70px; }
   .chat-sticker { width: 100px; }
-  .live-banner-match { padding: 10px 14px; gap: 8px; }
+  .live-banner-match { padding: 10px 14px; gap: 6px; flex-wrap: wrap; }
+  .live-label { font-size: 12px; letter-spacing: 1px; }
+  .live-flag { width: 24px; height: 18px; }
+  .live-score { font-size: 18px; }
   .live-team-name { font-size: 12px; }
   .next-match-banner { padding: 12px 14px; }
   .next-team-name { font-size: 13px; }
