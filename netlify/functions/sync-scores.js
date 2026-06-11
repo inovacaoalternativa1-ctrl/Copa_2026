@@ -159,16 +159,19 @@ exports.handler = async () => {
     return { statusCode: 500, body: e.message };
   }
 
-  const completed = (espnData.events||[]).filter(
-    ev => ev.competitions?.[0]?.status?.type?.completed === true
-  );
-  if (!completed.length) return { statusCode: 200, body: 'Nenhum jogo encerrado na ESPN' };
+  // Jogos encerrados E em andamento
+  const activeGames = (espnData.events||[]).filter(ev => {
+    const s = ev.competitions?.[0]?.status?.type;
+    return s?.completed === true || s?.state === 'in';
+  });
+  if (!activeGames.length) return { statusCode: 200, body: 'Nenhum jogo ativo na ESPN' };
 
   const { data: subs } = await supabase.from('push_subscriptions').select('id, endpoint, p256dh, auth');
   const updated = [];
 
-  for (const ev of completed) {
+  for (const ev of activeGames) {
     const comp = ev.competitions[0];
+    const isCompleted = comp.status?.type?.completed === true;
     const homeC = comp.competitors.find(c=>c.homeAway==='home');
     const awayC = comp.competitors.find(c=>c.homeAway==='away');
     if (!homeC||!awayC) continue;
@@ -191,14 +194,19 @@ exports.handler = async () => {
 
     const { error } = await supabase.from('matches').update({
       score_a: scoreA, score_b: scoreB,
-      is_finished: true, is_locked: true,
+      is_finished: isCompleted,
+      is_locked: true,
       updated_at: new Date().toISOString(),
     }).eq('id', match.id);
 
     if (error) { console.error('[sync-scores] update error:', error.message); continue; }
 
-    updated.push({ match, scoreA, scoreB });
-    await autoValidateExtras(supabase, match, scoreA, scoreB);
+    if (isCompleted) {
+      updated.push({ match, scoreA, scoreB });
+      await autoValidateExtras(supabase, match, scoreA, scoreB);
+    } else {
+      console.log(`[sync-scores] placar ao vivo: ${match.team_a} ${scoreA}×${scoreB} ${match.team_b}`);
+    }
   }
 
   // Envia push notifications para cada resultado novo
