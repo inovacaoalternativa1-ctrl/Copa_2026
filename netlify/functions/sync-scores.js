@@ -215,6 +215,8 @@ exports.handler = async () => {
       score_a: scoreA, score_b: scoreB,
       is_finished: isCompleted,
       is_locked: true,
+      match_status: status,
+      elapsed_time: f.fixture.status.elapsed ?? null,
     }).eq('id', match.id);
 
     if (error) { console.error('[sync-scores] update error:', error.message); continue; }

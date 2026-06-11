@@ -94,6 +94,19 @@ const calcCountdown = (dateStr) => {
   return `${m}m ${s}s`;
 };
 
+const statusLabel = (status, elapsed) => {
+  if (!status) return null;
+  const min = elapsed ? `${elapsed}'` : '';
+  if (status === 'HT')   return { text: 'INTERVALO', paused: true };
+  if (status === 'BT')   return { text: 'INT. PRORROGAÇÃO', paused: true };
+  if (status === '1H')   return { text: `1º TEMPO ${min}`, paused: false };
+  if (status === '2H')   return { text: `2º TEMPO ${min}`, paused: false };
+  if (status === 'ET')   return { text: `PRORROGAÇÃO ${min}`, paused: false };
+  if (status === 'P')    return { text: 'PÊNALTIS', paused: false };
+  if (status === 'LIVE') return { text: min ? `AO VIVO ${min}` : 'AO VIVO', paused: false };
+  return null;
+};
+
 // ── Figurinhas ───────────────────────────────────────────────
 const STICKERS = [
   { key: 'mascote',      label: '🕺 Homem festejando'   },
@@ -255,7 +268,7 @@ export default function ChatPage() {
       const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
         .from('matches')
-        .select('id, team_a, team_b, team_a_flag, team_b_flag, score_a, score_b')
+        .select('id, team_a, team_b, team_a_flag, team_b_flag, score_a, score_b, match_status, elapsed_time')
         .eq('is_finished', false)
         .gte('match_date', cutoff)
         .lte('match_date', now);
@@ -391,23 +404,28 @@ export default function ChatPage() {
       {/* Banner: jogo ao vivo */}
       {liveMatches.length > 0 && (
         <div className="live-banner">
-          {liveMatches.map(m => (
-            <div key={m.id} className="live-banner-match">
-              <span className="live-dot">🔴</span>
-              <span className="live-label">AO VIVO</span>
-              <div className="live-match-teams">
-                {flagUrl(m.team_a_flag)
-                  ? <img className="live-flag" src={flagUrl(m.team_a_flag)} alt={m.team_a} />
-                  : <span>{m.team_a_flag}</span>}
-                <span className="live-team-name">{m.team_a}</span>
-                <span className="live-score">{m.score_a ?? 0} × {m.score_b ?? 0}</span>
-                <span className="live-team-name">{m.team_b}</span>
-                {flagUrl(m.team_b_flag)
-                  ? <img className="live-flag" src={flagUrl(m.team_b_flag)} alt={m.team_b} />
-                  : <span>{m.team_b_flag}</span>}
+          {liveMatches.map(m => {
+            const st = statusLabel(m.match_status, m.elapsed_time);
+            const isPaused = st?.paused ?? false;
+            const label = st?.text || 'AO VIVO';
+            return (
+              <div key={m.id} className={`live-banner-match${isPaused ? ' live-banner-paused' : ''}`}>
+                <span className={`live-dot${isPaused ? ' live-dot-paused' : ''}`}>{isPaused ? '⏸️' : '🔴'}</span>
+                <span className="live-label">{label}</span>
+                <div className="live-match-teams">
+                  {flagUrl(m.team_a_flag)
+                    ? <img className="live-flag" src={flagUrl(m.team_a_flag)} alt={m.team_a} />
+                    : <span>{m.team_a_flag}</span>}
+                  <span className="live-team-name">{m.team_a}</span>
+                  <span className="live-score">{m.score_a ?? 0} × {m.score_b ?? 0}</span>
+                  <span className="live-team-name">{m.team_b}</span>
+                  {flagUrl(m.team_b_flag)
+                    ? <img className="live-flag" src={flagUrl(m.team_b_flag)} alt={m.team_b} />
+                    : <span>{m.team_b_flag}</span>}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
