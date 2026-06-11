@@ -265,7 +265,7 @@ export default function ChatPage() {
   useEffect(() => {
     const fetch = async () => {
       const now = new Date().toISOString();
-      const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
+      const cutoff = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
         .from('matches')
         .select('id, team_a, team_b, team_a_flag, team_b_flag, score_a, score_b, match_status, elapsed_time')
@@ -282,11 +282,12 @@ export default function ChatPage() {
   // ── Próximo jogo ─────────────────────────────────────────────────────────
   useEffect(() => {
     const fetch = async () => {
+      const soon = new Date(Date.now() - 30 * 60 * 1000).toISOString(); // até 30min atrás (cobre atrasos)
       const { data } = await supabase
         .from('matches')
         .select('id, team_a, team_b, team_a_flag, team_b_flag, match_date')
-        .eq('is_locked', false)
         .eq('is_finished', false)
+        .gt('match_date', soon)
         .order('match_date')
         .limit(1);
       setNextMatch(data?.[0] || null);
