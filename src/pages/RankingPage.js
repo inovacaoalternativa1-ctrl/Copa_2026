@@ -146,6 +146,7 @@ export default function RankingPage() {
                       <th>Fase</th>
                       <th>Placar</th>
                       <th>Extras</th>
+                      <th>Quiz</th>
                       <th>Total</th>
                       <th>Exatos</th>
                       <th>Acertos</th>
@@ -193,6 +194,7 @@ export default function RankingPage() {
                         </td>
                         <td>{Number(r.score_points||0).toFixed(0)}</td>
                         <td className="rank-extra">+{Number(r.extra_points||0).toFixed(2)}</td>
+                        <td className="rank-quiz">+{Number(r.quiz_points||0).toFixed(2)}</td>
                         <td className="rank-total">{Number(r.total_points||0).toFixed(2)}</td>
                         <td className="rank-exact">{r.exact_scores||0}</td>
                         <td>{r.correct_winners||0}</td>
