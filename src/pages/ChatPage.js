@@ -251,11 +251,14 @@ export default function ChatPage() {
   // ── Jogos ao vivo ────────────────────────────────────────────────────────
   useEffect(() => {
     const fetch = async () => {
+      const now = new Date().toISOString();
+      const cutoff = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
         .from('matches')
         .select('id, team_a, team_b, team_a_flag, team_b_flag, score_a, score_b')
-        .eq('is_locked', true)
-        .eq('is_finished', false);
+        .eq('is_finished', false)
+        .gte('match_date', cutoff)
+        .lte('match_date', now);
       setLiveMatches(data || []);
     };
     fetch();
