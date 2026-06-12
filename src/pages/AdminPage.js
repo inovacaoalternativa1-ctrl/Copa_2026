@@ -96,6 +96,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [autoExtrasLoading, setAutoExtrasLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null); // { ok, msg, time, syncing }
 
   // Results
@@ -222,6 +223,10 @@ export default function AdminPage() {
         if (e3) throw new Error(e3.message);
       }
 
+      // Auto-valida extras via API-Football
+      const extrasResult = await autoValidateMatchExtras(supabase, selMatch, parseInt(resA), parseInt(resB), user.id);
+
+      // Salva também os extras preenchidos manualmente (complementa os automáticos)
       const extraEntries = Object.entries(extraResults).filter(([k]) =>
         applicableExtras.find(t => t.id === parseInt(k))
       );
@@ -232,14 +237,34 @@ export default function AdminPage() {
 
       const { data } = await getMatches();
       setMatches(data || []);
+      const autoCount = extrasResult?.validated?.length || 0;
+      const manualCount = extraEntries.length;
       setStatus({
         type: 'success',
-        msg: `✅ Resultado ${parseInt(resA)}×${parseInt(resB)} salvo com sucesso!${extraEntries.length ? ` ${extraEntries.length} extra(s) validado(s).` : ''}`
+        msg: `✅ Resultado ${parseInt(resA)}×${parseInt(resB)} salvo! ${autoCount} extras auto-validados${manualCount ? ` + ${manualCount} manuais` : ''}.`
       });
     } catch (e) {
       setStatus({ type: 'error', msg: `Erro: ${e.message}` });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // ── Auto-validar extras manualmente (para jogos já encerrados) ─────────────
+  const handleAutoExtras = async () => {
+    if (!selMatch) return;
+    setAutoExtrasLoading(true);
+    setStatus(null);
+    try {
+      const scoreA = selMatch.is_finished ? selMatch.score_a : parseInt(resA);
+      const scoreB = selMatch.is_finished ? selMatch.score_b : parseInt(resB);
+      const result = await autoValidateMatchExtras(supabase, selMatch, scoreA, scoreB, user.id);
+      const count = result?.validated?.length || 0;
+      setStatus({ type: count > 0 ? 'success' : 'error', msg: count > 0 ? `✅ ${count} extras validados automaticamente via API-Football!` : '⚠️ Nenhum extra encontrado na API. O jogo pode não estar disponível ainda.' });
+    } catch (e) {
+      setStatus({ type: 'error', msg: `Erro: ${e.message}` });
+    } finally {
+      setAutoExtrasLoading(false);
     }
   };
 
@@ -496,13 +521,23 @@ export default function AdminPage() {
 
                 {/* Extras section */}
                 <div className="rpanel-extras-section">
-                  <div className="rpanel-section-label">
-                    ⚡ Eventos Extras
-                    {applicableExtras.length > 0 && (
-                      <span className="rpanel-extras-progress">
-                        {validatedCount}/{applicableExtras.length} validados
-                      </span>
-                    )}
+                  <div className="rpanel-section-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                    <span>
+                      ⚡ Eventos Extras
+                      {applicableExtras.length > 0 && (
+                        <span className="rpanel-extras-progress">
+                          {validatedCount}/{applicableExtras.length} validados
+                        </span>
+                      )}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleAutoExtras}
+                      disabled={autoExtrasLoading || !selMatch}
+                      style={{ fontSize: 12, padding: '5px 12px', borderRadius: 8, border: '1.5px solid #004aad', background: autoExtrasLoading ? '#e8f0ff' : 'white', color: '#004aad', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      {autoExtrasLoading ? '⏳ Buscando...' : '🤖 Auto-Validar Extras'}
+                    </button>
                   </div>
 
                   {applicableExtras.length === 0 ? (
