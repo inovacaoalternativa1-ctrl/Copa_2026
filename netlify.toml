@@ -5,3 +5,8 @@
 
 [functions."sync-scores"]
   schedule = "*/5 * * * *"
+
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

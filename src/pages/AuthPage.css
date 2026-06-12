@@ -142,6 +142,20 @@
 .auth-footer a { color: var(--orange); font-weight: 800; text-decoration: none; }
 .auth-footer a:hover { text-decoration: underline; }
 
+.forgot-link {
+  background: none; border: none; padding: 0;
+  color: var(--blue); font-size: 12px; font-weight: 600;
+  cursor: pointer; text-decoration: underline;
+  display: block; margin-top: 6px; text-align: right;
+  width: 100%;
+}
+.forgot-link:hover { color: var(--blue2); }
+.auth-footer .forgot-link {
+  display: inline; font-size: 14px; font-weight: 800;
+  color: var(--orange); margin-top: 0;
+}
+.auth-footer .forgot-link:hover { color: var(--orange); }
+
 .optional { color: var(--muted); font-weight: 400; font-size: 12px; }
 .terms-check { margin-top: 4px; font-size: 13px; color: var(--muted); align-items: flex-start; }
 .terms-check a { color: var(--blue); }
