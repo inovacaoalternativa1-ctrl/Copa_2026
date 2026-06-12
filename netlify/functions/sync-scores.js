@@ -190,7 +190,7 @@ exports.handler = async () => {
       });
     }
 
-    // Fallback: data de hoje e ontem SEM filtro de liga (plano free retorna mais dados assim)
+    // Fallback 1: API-Football por data sem filtro de liga
     if (!fixtures.length) {
       const today     = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -211,7 +211,37 @@ exports.handler = async () => {
           (m.team_a === h && m.team_b === a) || (m.team_a === a && m.team_b === h)
         );
       });
-      console.log(`[sync-scores] fallback: today=${d1.length} yesterday=${d2.length} match=${fixtures.length}`);
+      console.log(`[sync-scores] AF fallback: today=${d1.length} yesterday=${d2.length} match=${fixtures.length}`);
+    }
+
+    // Fallback 2: football-data.org — retorna histórico completo da Copa (plano free)
+    const FD_KEY = process.env.FOOTBALL_DATA_KEY;
+    if (!fixtures.length && FD_KEY) {
+      try {
+        const fdRes = await fetch(
+          'https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED',
+          { headers: { 'X-Auth-Token': FD_KEY } }
+        );
+        if (fdRes.ok) {
+          const fdData = await fdRes.json();
+          const fdMatches = (fdData.matches || []).filter(m => {
+            const h = resolveTeam(m.homeTeam.name);
+            const a = resolveTeam(m.awayTeam.name);
+            return activeMatches.some(am =>
+              (am.team_a === h && am.team_b === a) || (am.team_a === a && am.team_b === h)
+            );
+          });
+          // Converte para o formato do API-Football para o restante do código funcionar igual
+          fixtures = fdMatches.map(m => ({
+            fixture: { id: m.id, status: { short: 'FT', elapsed: 90 } },
+            teams:   { home: { name: m.homeTeam.name, id: m.homeTeam.id }, away: { name: m.awayTeam.name, id: m.awayTeam.id } },
+            goals:   { home: m.score.fullTime.home, away: m.score.fullTime.away },
+          }));
+          console.log(`[sync-scores] football-data.org: ${fdMatches.length} jogo(s) encerrado(s) encontrado(s)`);
+        }
+      } catch(e) {
+        console.error('[sync-scores] football-data.org erro:', e.message);
+      }
     }
   } catch(e) {
     return { statusCode: 500, body: JSON.stringify({ updated: 0, matches: [], body: `API-Football erro: ${e.message}` }) };
