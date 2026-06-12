@@ -150,6 +150,23 @@ exports.handler = async () => {
 
   // Mapeamento reverso: nome em inglês → nome no banco
   const API_TO_DB = Object.fromEntries(Object.entries(DB_TO_API).map(([db, en]) => [en, db]));
+
+  // Aliases que a API-Football usa e que diferem do mapeamento padrão
+  const API_ALIASES = {
+    'Czechia':'Tchéquia', 'Czech Rep.':'Tchéquia', 'Czech Republic':'Tchéquia',
+    'Korea Republic':'Coreia do Sul', 'Korea, South':'Coreia do Sul', 'South Korea':'Coreia do Sul',
+    'USA':'Estados Unidos', 'United States':'Estados Unidos',
+    'IR Iran':'Irã', 'Iran':'Irã',
+    'Ivory Coast':'Costa do Marfim', "Côte d'Ivoire":'Costa do Marfim', "Cote d'Ivoire":'Costa do Marfim',
+    'DR Congo':'RD Congo', 'Congo DR':'RD Congo',
+    'Bosnia and Herzegovina':'Bósnia', 'Bosnia':'Bósnia',
+    'Netherlands':'Holanda', 'Holland':'Holanda',
+    'Saudi Arabia':'Arábia Saudita',
+    'New Zealand':'Nova Zelândia',
+    'Cape Verde':'Cabo Verde',
+    'El Salvador':'El Salvador',
+  };
+  const resolveTeam = name => API_TO_DB[name] || API_ALIASES[name] || name;
   const COMPLETED = new Set(['FT','AET','PEN']);
   const LIVE      = new Set(['1H','HT','2H','ET','BT','P','LIVE']);
 
@@ -194,8 +211,8 @@ exports.handler = async () => {
 
     const homeNameEn = f.teams.home.name;
     const awayNameEn = f.teams.away.name;
-    const homeNameDb = API_TO_DB[homeNameEn] || homeNameEn;
-    const awayNameDb = API_TO_DB[awayNameEn] || awayNameEn;
+    const homeNameDb = resolveTeam(homeNameEn);
+    const awayNameDb = resolveTeam(awayNameEn);
 
     const match = activeMatches.find(m =>
       (m.team_a === homeNameDb && m.team_b === awayNameDb) ||

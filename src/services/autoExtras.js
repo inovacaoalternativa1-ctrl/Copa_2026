@@ -3,6 +3,21 @@ const BASE_URL = 'https://v3.football.api-sports.io';
 const WC_LEAGUE = 1;
 const WC_SEASON = 2026;
 
+// Aliases que a API-Football usa com nomes diferentes
+const API_ALIASES = {
+  'Czechia':'Tchéquia', 'Czech Rep.':'Tchéquia', 'Czech Republic':'Tchéquia',
+  'Korea Republic':'Coreia do Sul', 'Korea, South':'Coreia do Sul', 'South Korea':'Coreia do Sul',
+  'USA':'Estados Unidos', 'United States':'Estados Unidos',
+  'IR Iran':'Irã', 'Iran':'Irã',
+  'Ivory Coast':'Costa do Marfim', "Côte d'Ivoire":'Costa do Marfim', "Cote d'Ivoire":'Costa do Marfim',
+  'DR Congo':'RD Congo', 'Congo DR':'RD Congo',
+  'Bosnia and Herzegovina':'Bósnia', 'Bosnia':'Bósnia',
+  'Netherlands':'Holanda', 'Holland':'Holanda',
+  'Saudi Arabia':'Arábia Saudita',
+  'New Zealand':'Nova Zelândia',
+  'Cape Verde':'Cabo Verde',
+};
+
 // Portuguese DB name → API-Football English name
 const DB_TO_API = {
   'Brasil':'Brazil', 'Argentina':'Argentina', 'França':'France',
@@ -49,10 +64,14 @@ const findFixture = async (matchDate, teamA, teamB) => {
   const nameA = DB_TO_API[teamA] || teamA;
   const nameB = DB_TO_API[teamB] || teamB;
 
+  // Converte nome da API → nome no banco (tenta DB_TO_API reverso e aliases)
+  const API_TO_DB_LOCAL = Object.fromEntries(Object.entries(DB_TO_API).map(([db, en]) => [en, db]));
+  const apiToDb = name => API_TO_DB_LOCAL[name] || API_ALIASES[name] || name;
+
   const fixture = fixtures.find(f => {
-    const h = f.teams.home.name;
-    const a = f.teams.away.name;
-    return (h === nameA && a === nameB) || (h === nameB && a === nameA);
+    const hDb = apiToDb(f.teams.home.name);
+    const aDb = apiToDb(f.teams.away.name);
+    return (hDb === teamA && aDb === teamB) || (hDb === teamB && aDb === teamA);
   });
 
   if (!fixture) return null;
