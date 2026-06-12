@@ -182,23 +182,39 @@ exports.handler = async () => {
       fixtures = liveData.response || [];
     }
 
-    // Se não há ao vivo, busca encerrados hoje E ontem (cobre jogos que terminaram dia anterior)
+    // Se não há ao vivo, busca jogos encerrados recentemente (últimos 2 dias, sem filtro de season)
     if (!fixtures.length) {
-      const today = new Date().toISOString().split('T')[0];
+      const today     = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-      const [doneToday, doneYesterday] = await Promise.all([
-        fetch(`https://v3.football.api-sports.io/fixtures?date=${today}&league=1&season=2026`, { headers: { 'x-apisports-key': AF_KEY } }),
-        fetch(`https://v3.football.api-sports.io/fixtures?date=${yesterday}&league=1&season=2026`, { headers: { 'x-apisports-key': AF_KEY } }),
+
+      // Tenta 3 estratégias em paralelo para garantir que encontra os jogos
+      const [r1, r2, r3] = await Promise.all([
+        fetch(`https://v3.football.api-sports.io/fixtures?league=1&season=2026&last=20`, { headers: { 'x-apisports-key': AF_KEY } }),
+        fetch(`https://v3.football.api-sports.io/fixtures?date=${today}&league=1`,       { headers: { 'x-apisports-key': AF_KEY } }),
+        fetch(`https://v3.football.api-sports.io/fixtures?date=${yesterday}&league=1`,   { headers: { 'x-apisports-key': AF_KEY } }),
       ]);
-      const todayData   = doneToday.ok   ? ((await doneToday.json()).response   || []) : [];
-      const yesterdayData = doneYesterday.ok ? ((await doneYesterday.json()).response || []) : [];
-      fixtures = [...todayData, ...yesterdayData].filter(f => COMPLETED.has(f.fixture.status.short));
+      const d1 = r1.ok ? ((await r1.json()).response || []) : [];
+      const d2 = r2.ok ? ((await r2.json()).response || []) : [];
+      const d3 = r3.ok ? ((await r3.json()).response || []) : [];
+
+      // Une tudo, remove duplicatas por fixture.id, filtra só encerrados
+      const seen = new Set();
+      const all  = [...d1, ...d2, ...d3].filter(f => {
+        if (seen.has(f.fixture.id)) return false;
+        seen.add(f.fixture.id);
+        return COMPLETED.has(f.fixture.status.short);
+      });
+      fixtures = all;
+      console.log(`[sync-scores] fallback: last20=${d1.length} today=${d2.length} yesterday=${d3.length} encerrados=${fixtures.length}`);
     }
   } catch(e) {
     return { statusCode: 500, body: JSON.stringify({ updated: 0, matches: [], body: `API-Football erro: ${e.message}` }) };
   }
 
-  if (!fixtures.length) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo ativo na API-Football' }) };
+  if (!fixtures.length) {
+    const pendingNames = activeMatches.map(m => `${m.team_a} × ${m.team_b}`).join(', ');
+    return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: `API-Football não retornou jogos. Pendentes no banco: ${pendingNames}` }) };
+  }
 
   const { data: subs } = await supabase.from('push_subscriptions').select('id, endpoint, p256dh, auth');
   const updated = [];
