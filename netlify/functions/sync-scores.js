@@ -172,40 +172,46 @@ exports.handler = async () => {
 
   let fixtures = [];
   try {
-    // Busca jogos ao vivo na Copa 2026
+    // Busca TODOS os jogos ao vivo (sem filtro de liga — plano free não suporta histórico)
     const liveRes = await fetch(
-      'https://v3.football.api-sports.io/fixtures?live=all&league=1',
+      'https://v3.football.api-sports.io/fixtures?live=all',
       { headers: { 'x-apisports-key': AF_KEY } }
     );
     if (liveRes.ok) {
       const liveData = await liveRes.json();
-      fixtures = liveData.response || [];
+      // Filtra só jogos que batem com algum time do banco
+      const allLive = liveData.response || [];
+      fixtures = allLive.filter(f => {
+        const h = resolveTeam(f.teams.home.name);
+        const a = resolveTeam(f.teams.away.name);
+        return activeMatches.some(m =>
+          (m.team_a === h && m.team_b === a) || (m.team_a === a && m.team_b === h)
+        );
+      });
     }
 
-    // Se não há ao vivo, busca jogos encerrados recentemente (últimos 2 dias, sem filtro de season)
+    // Fallback: data de hoje e ontem SEM filtro de liga (plano free retorna mais dados assim)
     if (!fixtures.length) {
       const today     = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-      // Tenta 3 estratégias em paralelo para garantir que encontra os jogos
-      const [r1, r2, r3] = await Promise.all([
-        fetch(`https://v3.football.api-sports.io/fixtures?league=1&season=2026&last=20`, { headers: { 'x-apisports-key': AF_KEY } }),
-        fetch(`https://v3.football.api-sports.io/fixtures?date=${today}&league=1`,       { headers: { 'x-apisports-key': AF_KEY } }),
-        fetch(`https://v3.football.api-sports.io/fixtures?date=${yesterday}&league=1`,   { headers: { 'x-apisports-key': AF_KEY } }),
+      const [r1, r2] = await Promise.all([
+        fetch(`https://v3.football.api-sports.io/fixtures?date=${today}`,     { headers: { 'x-apisports-key': AF_KEY } }),
+        fetch(`https://v3.football.api-sports.io/fixtures?date=${yesterday}`, { headers: { 'x-apisports-key': AF_KEY } }),
       ]);
       const d1 = r1.ok ? ((await r1.json()).response || []) : [];
       const d2 = r2.ok ? ((await r2.json()).response || []) : [];
-      const d3 = r3.ok ? ((await r3.json()).response || []) : [];
-
-      // Une tudo, remove duplicatas por fixture.id, filtra só encerrados
       const seen = new Set();
-      const all  = [...d1, ...d2, ...d3].filter(f => {
+      fixtures = [...d1, ...d2].filter(f => {
         if (seen.has(f.fixture.id)) return false;
         seen.add(f.fixture.id);
-        return COMPLETED.has(f.fixture.status.short);
+        if (!COMPLETED.has(f.fixture.status.short)) return false;
+        const h = resolveTeam(f.teams.home.name);
+        const a = resolveTeam(f.teams.away.name);
+        return activeMatches.some(m =>
+          (m.team_a === h && m.team_b === a) || (m.team_a === a && m.team_b === h)
+        );
       });
-      fixtures = all;
-      console.log(`[sync-scores] fallback: last20=${d1.length} today=${d2.length} yesterday=${d3.length} encerrados=${fixtures.length}`);
+      console.log(`[sync-scores] fallback: today=${d1.length} yesterday=${d2.length} match=${fixtures.length}`);
     }
   } catch(e) {
     return { statusCode: 500, body: JSON.stringify({ updated: 0, matches: [], body: `API-Football erro: ${e.message}` }) };

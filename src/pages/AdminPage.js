@@ -391,6 +391,14 @@ export default function AdminPage() {
             </button>
           </div>
 
+          {/* Alerta: jogos que deveriam ter encerrado mas ainda estão pendentes */}
+          {pending.filter(m => (Date.now() - new Date(m.match_date).getTime()) > 150 * 60 * 1000).map(m => (
+            <div key={m.id} style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 10, padding: '10px 16px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <span style={{ fontSize: 13 }}>⚠️ <strong>{m.team_a} × {m.team_b}</strong> — jogo deve ter encerrado. A API não retornou o resultado. Lance manualmente.</span>
+              <button className="btn btn-sm" style={{ whiteSpace: 'nowrap', fontSize: 12 }} onClick={() => selectMatch(String(m.id))}>Lançar →</button>
+            </div>
+          ))}
+
           {/* Match selector */}
           <div className="card" style={{ marginBottom: 20 }}>
             <h3 className="section-title">Selecionar Jogo</h3>
@@ -404,7 +412,7 @@ export default function AdminPage() {
                 <optgroup label="⏳ Pendentes">
                   {pending.map(m => (
                     <option key={m.id} value={m.id}>
-                      {m.team_a} × {m.team_b} · {new Date(m.match_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      {(Date.now() - new Date(m.match_date).getTime()) > 150 * 60 * 1000 ? '⚠️ ' : ''}{m.team_a} × {m.team_b} · {new Date(m.match_date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </option>
                   ))}
                 </optgroup>
