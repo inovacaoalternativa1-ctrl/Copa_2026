@@ -75,30 +75,53 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, score
   };
 };
 
-const autoValidateExtras = async (supabase, match, scoreA, scoreB) => {
+const autoValidateExtras = async (supabase, match, scoreA, scoreB, afFixtureId) => {
   const API_KEY = process.env.REACT_APP_API_FOOTBALL_KEY;
   if (!API_KEY) return;
   try {
-    const date = match.match_date.split('T')[0];
-    const fixtRes = await fetch(
-      `https://v3.football.api-sports.io/fixtures?date=${date}&league=1&season=2026`,
-      { headers: { 'x-apisports-key': API_KEY } }
-    );
-    if (!fixtRes.ok) return;
-    const fixtData = await fixtRes.json();
-    const nameA = DB_TO_API[match.team_a] || match.team_a;
-    const nameB = DB_TO_API[match.team_b] || match.team_b;
-    const fixture = (fixtData.response||[]).find(f => {
-      const h = f.teams.home.name, a = f.teams.away.name;
-      return (h===nameA&&a===nameB)||(h===nameB&&a===nameA);
-    });
-    if (!fixture) return;
+    let fixture = null;
+
+    if (afFixtureId) {
+      // ID já conhecido (jogo foi detectado ao vivo) — busca direto
+      const r = await fetch(
+        `https://v3.football.api-sports.io/fixtures?id=${afFixtureId}`,
+        { headers: { 'x-apisports-key': API_KEY } }
+      );
+      if (!r.ok) return;
+      const d = await r.json();
+      fixture = d.response?.[0] || null;
+    } else {
+      // Fallback: busca por data sem filtro de liga (free plan)
+      const date = match.match_date.split('T')[0];
+      const nameA = DB_TO_API[match.team_a] || match.team_a;
+      const nameB = DB_TO_API[match.team_b] || match.team_b;
+      for (const dateStr of [date, new Date(new Date(date).getTime()-86400000).toISOString().split('T')[0]]) {
+        const r = await fetch(
+          `https://v3.football.api-sports.io/fixtures?date=${dateStr}`,
+          { headers: { 'x-apisports-key': API_KEY } }
+        );
+        if (!r.ok) continue;
+        const d = await r.json();
+        fixture = (d.response||[]).find(f => {
+          const h = f.teams.home.name, a = f.teams.away.name;
+          return (h===nameA&&a===nameB)||(h===nameB&&a===nameA);
+        }) || null;
+        if (fixture) break;
+      }
+    }
+
+    if (!fixture) {
+      console.log(`[sync-scores] extras: fixture não encontrado para jogo ${match.id}`);
+      return;
+    }
+
     const evRes = await fetch(
       `https://v3.football.api-sports.io/fixtures/events?fixture=${fixture.fixture.id}`,
       { headers: { 'x-apisports-key': API_KEY } }
     );
     if (!evRes.ok) return;
     const evData = await evRes.json();
+    const nameA = DB_TO_API[match.team_a] || match.team_a;
     const homeIsTeamA = fixture.teams.home.name === nameA;
     const results = buildResults(
       evData.response||[], fixture.fixture.status.short,
@@ -187,7 +210,7 @@ exports.handler = async () => {
         return activeMatches.some(m =>
           (m.team_a === h && m.team_b === a) || (m.team_a === a && m.team_b === h)
         );
-      });
+      }).map(f => ({ ...f, _afId: f.fixture.id }));
     }
 
     // Fallback 1: API-Football por data sem filtro de liga
@@ -210,7 +233,7 @@ exports.handler = async () => {
         return activeMatches.some(m =>
           (m.team_a === h && m.team_b === a) || (m.team_a === a && m.team_b === h)
         );
-      });
+      }).map(f => ({ ...f, _afId: f.fixture.id }));
       console.log(`[sync-scores] AF fallback: today=${d1.length} yesterday=${d2.length} match=${fixtures.length}`);
     }
 
@@ -291,7 +314,7 @@ exports.handler = async () => {
 
     if (isCompleted) {
       updated.push({ match, scoreA, scoreB });
-      await autoValidateExtras(supabase, match, scoreA, scoreB);
+      await autoValidateExtras(supabase, match, scoreA, scoreB, f._afId || null);
     } else {
       console.log(`[sync-scores] ao vivo (${status}): ${match.team_a} ${scoreA}×${scoreB} ${match.team_b}`);
     }
