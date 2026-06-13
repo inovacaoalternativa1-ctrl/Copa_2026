@@ -58,9 +58,14 @@ const apiFetch = async (path) => {
 // Find the API-Football fixture for a given Supabase match
 const findFixture = async (matchDate, teamA, teamB) => {
   const date = matchDate.split('T')[0];
-  const data = await apiFetch(`/fixtures?date=${date}&league=${WC_LEAGUE}&season=${WC_SEASON}`);
-  const fixtures = data.response || [];
-
+  const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
+  // Plano free não suporta filtro de liga em histórico — busca por data sem league/season
+  let data = await apiFetch(`/fixtures?date=${date}`);
+  let fixtures = data.response || [];
+  if (!fixtures.length) {
+    data = await apiFetch(`/fixtures?date=${yesterday}`);
+    fixtures = data.response || [];
+  }
   const nameA = DB_TO_API[teamA] || teamA;
   const nameB = DB_TO_API[teamB] || teamB;
 
