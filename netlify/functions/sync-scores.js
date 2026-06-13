@@ -172,7 +172,11 @@ exports.handler = async () => {
   if (!AF_KEY) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'REACT_APP_API_FOOTBALL_KEY não configurada' }) };
 
   // Mapeamento reverso: nome em inglês → nome no banco
-  const API_TO_DB = Object.fromEntries(Object.entries(DB_TO_API).map(([db, en]) => [en, db]));
+  // normalize('NFC') garante que acentos com encodings diferentes comparem igual
+  const norm = s => (s || '').normalize('NFC').trim();
+  const API_TO_DB = Object.fromEntries(
+    Object.entries(DB_TO_API).map(([db, en]) => [norm(en), norm(db)])
+  );
 
   // Aliases que a API-Football usa e que diferem do mapeamento padrão
   const API_ALIASES = {
@@ -189,7 +193,10 @@ exports.handler = async () => {
     'Cape Verde':'Cabo Verde',
     'El Salvador':'El Salvador',
   };
-  const resolveTeam = name => API_TO_DB[name] || API_ALIASES[name] || name;
+  const resolveTeam = name => {
+    const n = norm(name);
+    return API_TO_DB[n] || API_ALIASES[n] || n;
+  };
   const COMPLETED = new Set(['FT','AET','PEN']);
   const LIVE      = new Set(['1H','HT','2H','ET','BT','P','LIVE']);
 
@@ -208,7 +215,8 @@ exports.handler = async () => {
         const h = resolveTeam(f.teams.home.name);
         const a = resolveTeam(f.teams.away.name);
         return activeMatches.some(m =>
-          (m.team_a === h && m.team_b === a) || (m.team_a === a && m.team_b === h)
+          (norm(m.team_a) === h && norm(m.team_b) === a) ||
+          (norm(m.team_a) === a && norm(m.team_b) === h)
         );
       }).map(f => ({ ...f, _afId: f.fixture.id }));
     }
@@ -231,7 +239,8 @@ exports.handler = async () => {
         const h = resolveTeam(f.teams.home.name);
         const a = resolveTeam(f.teams.away.name);
         return activeMatches.some(m =>
-          (m.team_a === h && m.team_b === a) || (m.team_a === a && m.team_b === h)
+          (norm(m.team_a) === h && norm(m.team_b) === a) ||
+          (norm(m.team_a) === a && norm(m.team_b) === h)
         );
       }).map(f => ({ ...f, _afId: f.fixture.id }));
       console.log(`[sync-scores] AF fallback: today=${d1.length} yesterday=${d2.length} match=${fixtures.length}`);
@@ -290,15 +299,15 @@ exports.handler = async () => {
     const awayNameDb = resolveTeam(awayNameEn);
 
     const match = activeMatches.find(m =>
-      (m.team_a === homeNameDb && m.team_b === awayNameDb) ||
-      (m.team_a === awayNameDb && m.team_b === homeNameDb)
+      (norm(m.team_a) === homeNameDb && norm(m.team_b) === awayNameDb) ||
+      (norm(m.team_a) === awayNameDb && norm(m.team_b) === homeNameDb)
     );
     if (!match) {
       console.warn(`[sync-scores] sem match para: ${homeNameEn} vs ${awayNameEn}`);
       continue;
     }
 
-    const homeIsTeamA = match.team_a === homeNameDb;
+    const homeIsTeamA = norm(match.team_a) === homeNameDb;
     const scoreA = homeIsTeamA ? (f.goals.home ?? 0) : (f.goals.away ?? 0);
     const scoreB = homeIsTeamA ? (f.goals.away ?? 0) : (f.goals.home ?? 0);
 
