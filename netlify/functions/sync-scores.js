@@ -172,30 +172,66 @@ exports.handler = async () => {
   if (!AF_KEY) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'REACT_APP_API_FOOTBALL_KEY não configurada' }) };
 
   // Mapeamento reverso: nome em inglês → nome no banco
-  // normalize('NFC') garante que acentos com encodings diferentes comparem igual
   const norm = s => (s || '').normalize('NFC').trim();
   const API_TO_DB = Object.fromEntries(
     Object.entries(DB_TO_API).map(([db, en]) => [norm(en), norm(db)])
   );
 
-  // Aliases que a API-Football usa e que diferem do mapeamento padrão
-  const API_ALIASES = {
-    'Czechia':'Tchéquia', 'Czech Rep.':'Tchéquia', 'Czech Republic':'Tchéquia',
-    'Korea Republic':'Coreia do Sul', 'Korea, South':'Coreia do Sul', 'South Korea':'Coreia do Sul',
-    'USA':'Estados Unidos', 'United States':'Estados Unidos',
-    'IR Iran':'Irã', 'Iran':'Irã',
-    'Ivory Coast':'Costa do Marfim', "Côte d'Ivoire":'Costa do Marfim', "Cote d'Ivoire":'Costa do Marfim',
-    'DR Congo':'RD Congo', 'Congo DR':'RD Congo',
-    'Bosnia and Herzegovina':'Bósnia', 'Bosnia':'Bósnia',
-    'Netherlands':'Holanda', 'Holland':'Holanda',
-    'Saudi Arabia':'Arábia Saudita',
-    'New Zealand':'Nova Zelândia',
-    'Cape Verde':'Cabo Verde',
-    'El Salvador':'El Salvador',
+  // Mapeamento com Unicode-escapes nos valores — imune a encoding do arquivo
+  // í=í  ç=ç  é=é  á=á  Á=Á  ó=ó
+  // ô=ô  ã=ã  â=â  õ=õ  í=í
+  const SAFE_OVERRIDES = {
+    'Switzerland':            'Suíça',
+    'France':                 'França',
+    'Belgium':                'Bélgica',
+    'Italy':                  'Itália',
+    'Croatia':                'Croácia',
+    'Sweden':                 'Suécia',
+    'Austria':                'Áustria',
+    'Scotland':               'Escócia',
+    'Mexico':                 'México',
+    'Canada':                 'Canadá',
+    'Colombia':               'Colômbia',
+    'Bolivia':                'Bolívia',
+    'Cameroon':               'Camarões',
+    'South Africa':           'África do Sul',
+    'Tunisia':                'Tunísia',
+    'Algeria':                'Argélia',
+    'Nigeria':                'Nigéria',
+    'Japan':                  'Japão',
+    'Australia':              'Austrália',
+    'Iran':                   'Irã',
+    'IR Iran':                'Irã',
+    'Saudi Arabia':           'Arábia Saudita',
+    'Jordan':                 'Jordânia',
+    'Uzbekistan':             'Uzbequistão',
+    'New Zealand':            'Nova Zelândia',
+    'Bosnia and Herzegovina': 'Bósnia',
+    'Bosnia':                 'Bósnia',
+    'Czechia':                'Tchéquia',
+    'Czech Republic':         'Tchéquia',
+    'Czech Rep.':             'Tchéquia',
+    'Curacao':                'Curaçao',
+    'Panama':                 'Panamá',
+    'Korea Republic':         'Coreia do Sul',
+    'Korea, South':           'Coreia do Sul',
+    'South Korea':            'Coreia do Sul',
+    'USA':                    'Estados Unidos',
+    'United States':          'Estados Unidos',
+    'Ivory Coast':            'Costa do Marfim',
+    "Cote d'Ivoire":          'Costa do Marfim',
+    'DR Congo':               'RD Congo',
+    'Congo DR':               'RD Congo',
+    'Netherlands':            'Holanda',
+    'Holland':                'Holanda',
+    'Cape Verde':             'Cabo Verde',
   };
+  // SAFE_OVERRIDES tem prioridade — usa Unicode escapes para evitar problema de encoding
+  Object.assign(API_TO_DB, SAFE_OVERRIDES);
+
   const resolveTeam = name => {
     const n = norm(name);
-    return API_TO_DB[n] || API_ALIASES[n] || n;
+    return API_TO_DB[n] || n;
   };
   const COMPLETED = new Set(['FT','AET','PEN']);
   const LIVE      = new Set(['1H','HT','2H','ET','BT','P','LIVE']);
