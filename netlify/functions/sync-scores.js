@@ -296,7 +296,8 @@ exports.handler = async () => {
             const h = resolveTeam(m.homeTeam.name);
             const a = resolveTeam(m.awayTeam.name);
             return activeMatches.some(am =>
-              (am.team_a === h && am.team_b === a) || (am.team_a === a && am.team_b === h)
+              (norm(am.team_a) === h && norm(am.team_b) === a) ||
+              (norm(am.team_a) === a && norm(am.team_b) === h)
             );
           });
           // Converte para o formato do API-Football para o restante do código funcionar igual
@@ -309,6 +310,39 @@ exports.handler = async () => {
         }
       } catch(e) {
         console.error('[sync-scores] football-data.org erro:', e.message);
+      }
+    }
+
+    // Fallback 3: ESPN public scoreboard (sem chave, retorna jogos encerrados)
+    if (!fixtures.length) {
+      try {
+        const fmt = d => d.toISOString().split('T')[0].replace(/-/g, '');
+        for (const ds of [fmt(new Date()), fmt(new Date(Date.now() - 86400000))]) {
+          const r = await fetch(`${ESPN_URL}?dates=${ds}`);
+          if (!r.ok) continue;
+          const data = await r.json();
+          for (const ev of (data.events || [])) {
+            const comp = ev.competitions?.[0];
+            if (!comp?.status?.type?.completed) continue;
+            const homeC = comp.competitors?.find(c => c.homeAway === 'home');
+            const awayC = comp.competitors?.find(c => c.homeAway === 'away');
+            if (!homeC || !awayC) continue;
+            const h = resolveTeam(homeC.team.displayName);
+            const a = resolveTeam(awayC.team.displayName);
+            if (!activeMatches.some(m =>
+              (norm(m.team_a) === h && norm(m.team_b) === a) ||
+              (norm(m.team_a) === a && norm(m.team_b) === h)
+            )) continue;
+            fixtures.push({
+              fixture: { id: null, status: { short: 'FT', elapsed: 90 } },
+              teams:   { home: { name: homeC.team.displayName, id: null }, away: { name: awayC.team.displayName, id: null } },
+              goals:   { home: parseInt(homeC.score || 0), away: parseInt(awayC.score || 0) },
+            });
+          }
+          if (fixtures.length) { console.log(`[sync-scores] ESPN fallback: ${fixtures.length} jogo(s)`); break; }
+        }
+      } catch(e) {
+        console.error('[sync-scores] ESPN fallback erro:', e.message);
       }
     }
   } catch(e) {
