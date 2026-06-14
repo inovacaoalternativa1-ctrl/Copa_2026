@@ -23,6 +23,26 @@ const DB_TO_API = {
   'Guatemala':'Guatemala','El Salvador':'El Salvador',
 };
 
+// Abreviação ESPN (3 letras) → nome em inglês
+const ESPN_ABBR_TO_NAME = {
+  'SCO':'Scotland','ENG':'England','WAL':'Wales','HAI':'Haiti',
+  'USA':'United States','MEX':'Mexico','CAN':'Canada',
+  'BRA':'Brazil','ARG':'Argentina','GER':'Germany','FRA':'France',
+  'ESP':'Spain','POR':'Portugal','NED':'Netherlands','BEL':'Belgium',
+  'ITA':'Italy','CRO':'Croatia','SUI':'Switzerland','AUT':'Austria',
+  'DEN':'Denmark','SWE':'Sweden','NOR':'Norway','TUR':'Turkey',
+  'MAR':'Morocco','SEN':'Senegal','GHA':'Ghana','EGY':'Egypt',
+  'NGA':'Nigeria','CMR':'Cameroon','RSA':'South Africa','TUN':'Tunisia',
+  'ALG':'Algeria','CIV':'Ivory Coast','DRC':'DR Congo','CPV':'Cape Verde',
+  'JPN':'Japan','KOR':'South Korea','AUS':'Australia','IRN':'Iran',
+  'KSA':'Saudi Arabia','QAT':'Qatar','JOR':'Jordan','IRQ':'Iraq',
+  'UZB':'Uzbekistan','NZL':'New Zealand','BIH':'Bosnia and Herzegovina',
+  'CZE':'Czech Republic','CUW':'Curacao','PAN':'Panama','HON':'Honduras',
+  'JAM':'Jamaica','GUA':'Guatemala','SLV':'El Salvador',
+  'URU':'Uruguay','COL':'Colombia','ECU':'Ecuador','PAR':'Paraguay',
+  'CHI':'Chile','PER':'Peru','VEN':'Venezuela','BOL':'Bolivia',
+};
+
 const yn = cond => ({ answer: cond ? 'yes' : 'no' });
 
 const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB) => {
@@ -56,11 +76,29 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, score
   };
 };
 
-// Tenta API-Football por data
-const findViaAF = async (matchDate, nameA, nameB) => {
+// Tenta API-Football — primeiro pelo fixture ID guardado, depois por data
+const findViaAF = async (matchDate, nameA, nameB, savedFixtureId = null) => {
   if (!AF_KEY) return null;
   const API_TO_DB = Object.fromEntries(Object.entries(DB_TO_API).map(([db, en]) => [en, db]));
   const apiToDb = n => API_TO_DB[n] || n;
+
+  // 1. Tenta pelo fixture ID guardado no banco (mais confiável)
+  if (savedFixtureId) {
+    try {
+      const r = await fetch(`${AF_BASE}/fixtures?id=${savedFixtureId}`, { headers: { 'x-apisports-key': AF_KEY } });
+      if (r.ok) {
+        const data = await r.json();
+        const f = data.response?.[0];
+        if (f) {
+          console.log(`[validate-extras] AF fixture direto: ${f.teams.home.name} vs ${f.teams.away.name}`);
+          const h = f.teams.home.name, a = f.teams.away.name;
+          return { source: 'af', fixtureId: savedFixtureId, homeIsTeamA: h === nameA, homeTeamId: f.teams.home.id, awayTeamId: f.teams.away.id };
+        }
+      }
+    } catch(e) { console.warn('[validate-extras] AF fixture direto erro:', e.message); }
+  }
+
+  // 2. Busca por data (hoje e ontem)
   const date = matchDate.split('T')[0];
   const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
   for (const d of [date, yesterday]) {
@@ -71,20 +109,21 @@ const findViaAF = async (matchDate, nameA, nameB) => {
       const f = (data.response || []).find(f => {
         const h = apiToDb(f.teams.home.name);
         const a = apiToDb(f.teams.away.name);
-        const dbA = Object.keys(DB_TO_API).find(k => DB_TO_API[k] === nameA) || nameA;
-        const dbB = Object.keys(DB_TO_API).find(k => DB_TO_API[k] === nameB) || nameB;
-        return (h === dbA && a === dbB) || (h === dbB && a === dbA);
+        return (h === nameA && a === nameB) || (h === nameB && a === nameA);
       });
-      if (f) return { source: 'af', fixtureId: f.fixture.id, homeIsTeamA: f.teams.home.name === nameA, homeTeamId: f.teams.home.id, awayTeamId: f.teams.away.id };
-    } catch(e) { console.warn('[validate-extras] AF erro:', e.message); }
+      if (f) {
+        return { source: 'af', fixtureId: f.fixture.id, homeIsTeamA: apiToDb(f.teams.home.name) === nameA, homeTeamId: f.teams.home.id, awayTeamId: f.teams.away.id };
+      }
+    } catch(e) { console.warn('[validate-extras] AF data erro:', e.message); }
   }
   return null;
 };
 
-// Tenta ESPN scoreboard
+// Tenta ESPN scoreboard — match por displayName E por abreviação
 const findViaESPN = async (matchDate, nameA, nameB) => {
   const date = matchDate.split('T')[0];
   const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
+  const minSinceKickoff = (Date.now() - new Date(matchDate).getTime()) / 60000;
   for (const d of [date, yesterday]) {
     try {
       const ds = d.replace(/-/g, '');
@@ -95,15 +134,19 @@ const findViaESPN = async (matchDate, nameA, nameB) => {
       for (const ev of (data.events || [])) {
         const comp = ev.competitions?.[0];
         if (!comp) continue;
+        // Pula se ainda em andamento E menos de 100 min do kick-off
+        if (!comp.status?.type?.completed && minSinceKickoff < 100) continue;
         const homeC = comp.competitors?.find(c => c.homeAway === 'home');
         const awayC = comp.competitors?.find(c => c.homeAway === 'away');
         if (!homeC || !awayC) continue;
-        const h = homeC.team.displayName;
-        const a = awayC.team.displayName;
-        console.log(`[validate-extras] ESPN evento: ${h} vs ${a}`);
-        if ((h === nameA && a === nameB) || (h === nameB && a === nameA)) {
-          return { source: 'espn', eventId: ev.id, homeIsTeamA: h === nameA, homeTeamId: homeC.team.id, awayTeamId: awayC.team.id };
-        }
+        const h    = homeC.team.displayName, a = awayC.team.displayName;
+        const hAlt = ESPN_ABBR_TO_NAME[homeC.team.abbreviation] || h;
+        const aAlt = ESPN_ABBR_TO_NAME[awayC.team.abbreviation] || a;
+        console.log(`[validate-extras] ESPN: ${h}(${homeC.team.abbreviation}) vs ${a}(${awayC.team.abbreviation})`);
+        const nm = (x,y) => (x===nameA&&y===nameB)||(x===nameB&&y===nameA);
+        if (!nm(h,a) && !nm(hAlt,aAlt)) continue;
+        const homeIsTeamA = nm(h,a) ? (h===nameA) : (hAlt===nameA);
+        return { source: 'espn', eventId: ev.id, homeIsTeamA, homeTeamId: homeC.team.id, awayTeamId: awayC.team.id };
       }
     } catch(e) { console.warn('[validate-extras] ESPN scoreboard erro:', e.message); }
   }
@@ -116,33 +159,32 @@ const fetchESPNEvents = async (eventId) => {
   if (!r.ok) return { events: [], raw: null };
   const data = await r.json();
   console.log('[validate-extras] ESPN summary keys:', Object.keys(data));
-
   const events = [];
-  // Tenta plays
   for (const play of (data.plays || [])) {
     const typeText = (play.type?.text || play.type?.name || '').toLowerCase();
     const teamId = play.team?.id || null;
     const elapsed = play.clock?.value ? Math.ceil(play.clock.value / 60) : 45;
     if (play.scoringPlay || typeText.includes('goal')) {
-      events.push({ type:'Goal', detail: typeText.includes('own') ? 'Own Goal' : typeText.includes('pen') ? 'Penalty' : 'Normal Goal', team:{id:teamId}, time:{elapsed, extra:null} });
-    } else if (typeText.includes('yellow-red') || typeText.includes('second yellow')) {
-      events.push({ type:'Card', detail:'Yellow Red Card', team:{id:teamId}, time:{elapsed, extra:null} });
+      events.push({ type:'Goal', detail: typeText.includes('own')?'Own Goal':typeText.includes('pen')?'Penalty':'Normal Goal', team:{id:teamId}, time:{elapsed,extra:null} });
+    } else if (typeText.includes('yellow-red')||typeText.includes('second yellow')) {
+      events.push({ type:'Card', detail:'Yellow Red Card', team:{id:teamId}, time:{elapsed,extra:null} });
     } else if (typeText.includes('red')) {
-      events.push({ type:'Card', detail:'Red Card', team:{id:teamId}, time:{elapsed, extra:null} });
-    } else if (typeText.includes('yellow') || typeText.includes('caution') || typeText.includes('booking')) {
-      events.push({ type:'Card', detail:'Yellow Card', team:{id:teamId}, time:{elapsed, extra:null} });
+      events.push({ type:'Card', detail:'Red Card', team:{id:teamId}, time:{elapsed,extra:null} });
+    } else if (typeText.includes('yellow')||typeText.includes('caution')||typeText.includes('booking')) {
+      events.push({ type:'Card', detail:'Yellow Card', team:{id:teamId}, time:{elapsed,extra:null} });
     }
   }
-  // Tenta keyPlays se plays vazio
-  for (const play of (events.length ? [] : (data.keyPlays || []))) {
-    const typeText = (play.type?.text || '').toLowerCase();
-    const teamId = play.team?.id || null;
-    const elapsed = parseInt(play.clock?.displayValue || '45');
-    if (typeText.includes('goal') || play.scoringPlay) {
-      events.push({ type:'Goal', detail: typeText.includes('own') ? 'Own Goal' : 'Normal Goal', team:{id:teamId}, time:{elapsed, extra:null} });
+  // Fallback: keyPlays se plays vazio
+  if (!events.length) {
+    for (const play of (data.keyPlays || [])) {
+      const typeText = (play.type?.text || '').toLowerCase();
+      const teamId = play.team?.id || null;
+      const elapsed = parseInt(play.clock?.displayValue || '45');
+      if (typeText.includes('goal') || play.scoringPlay) {
+        events.push({ type:'Goal', detail:typeText.includes('own')?'Own Goal':'Normal Goal', team:{id:teamId}, time:{elapsed,extra:null} });
+      }
     }
   }
-
   console.log(`[validate-extras] ESPN events parseados: ${events.length}`);
   return { events, rawKeys: Object.keys(data) };
 };
@@ -166,10 +208,10 @@ exports.handler = async (event) => {
   const scoreA = match.score_a ?? 0;
   const scoreB = match.score_b ?? 0;
 
-  console.log(`[validate-extras] Jogo ${matchId}: ${match.team_a} (${nameA}) vs ${match.team_b} (${nameB}), ${scoreA}×${scoreB}`);
+  console.log(`[validate-extras] Jogo ${matchId}: ${match.team_a}(${nameA}) vs ${match.team_b}(${nameB}), ${scoreA}×${scoreB}, fixture_id=${match.api_fixture_id||'—'}`);
 
-  // 1. Tenta API-Football
-  let info = await findViaAF(match.match_date, nameA, nameB);
+  // 1. Tenta API-Football (usando fixture ID guardado se disponível)
+  let info = await findViaAF(match.match_date, nameA, nameB, match.api_fixture_id);
   // 2. Fallback ESPN
   if (!info) info = await findViaESPN(match.match_date, nameA, nameB);
 
@@ -196,7 +238,7 @@ exports.handler = async (event) => {
     rawInfo = result;
   }
 
-  const results = buildResults(events, 'FT', info.homeIsTeamA, info.homeTeamId, info.awayTeamId, scoreA, scoreB);
+  const results = buildResults(events, match.match_status || 'FT', info.homeIsTeamA, info.homeTeamId, info.awayTeamId, scoreA, scoreB);
   console.log('[validate-extras] Resultados calculados:', JSON.stringify(results));
 
   const validated = [];
@@ -208,6 +250,16 @@ exports.handler = async (event) => {
     );
     if (error) console.error(`[validate-extras] Upsert tipo ${typeId} falhou:`, error.message);
     else validated.push(typeId);
+  }
+
+  // Recalcula pontuações de todos os usuários
+  if (validated.length > 0) {
+    try {
+      await supabase.rpc('fn_recalculate_all_user_scores');
+      console.log('[validate-extras] pontuações recalculadas');
+    } catch(e) {
+      console.error('[validate-extras] recalculate error:', e.message);
+    }
   }
 
   console.log(`[validate-extras] ${validated.length}/16 extras inseridos`);

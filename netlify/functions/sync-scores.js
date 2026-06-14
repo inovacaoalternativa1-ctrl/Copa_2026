@@ -75,29 +75,52 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, score
   };
 };
 
+// Mapeamento abreviação ESPN (3 letras) → nome em inglês
+const ESPN_ABBR_TO_NAME = {
+  'SCO':'Scotland','ENG':'England','WAL':'Wales','HAI':'Haiti',
+  'USA':'United States','MEX':'Mexico','CAN':'Canada',
+  'BRA':'Brazil','ARG':'Argentina','GER':'Germany','FRA':'France',
+  'ESP':'Spain','POR':'Portugal','NED':'Netherlands','BEL':'Belgium',
+  'ITA':'Italy','CRO':'Croatia','SUI':'Switzerland','AUT':'Austria',
+  'DEN':'Denmark','SWE':'Sweden','NOR':'Norway','TUR':'Turkey',
+  'MAR':'Morocco','SEN':'Senegal','GHA':'Ghana','EGY':'Egypt',
+  'NGA':'Nigeria','CMR':'Cameroon','RSA':'South Africa','TUN':'Tunisia',
+  'ALG':'Algeria','CIV':'Ivory Coast','DRC':'DR Congo','CPV':'Cape Verde',
+  'JPN':'Japan','KOR':'South Korea','AUS':'Australia','IRN':'Iran',
+  'KSA':'Saudi Arabia','QAT':'Qatar','JOR':'Jordan','IRQ':'Iraq',
+  'UZB':'Uzbekistan','NZL':'New Zealand','BIH':'Bosnia and Herzegovina',
+  'CZE':'Czech Republic','CUW':'Curacao','PAN':'Panama','HON':'Honduras',
+  'JAM':'Jamaica','GUA':'Guatemala','SLV':'El Salvador',
+  'URU':'Uruguay','COL':'Colombia','ECU':'Ecuador','PAR':'Paraguay',
+  'CHI':'Chile','PER':'Peru','VEN':'Venezuela','BOL':'Bolivia',
+};
+
 // Busca eventos via ESPN summary (fallback quando API-Football não retorna eventos)
 const espnFindAndFetchEvents = async (matchDate, nameA, nameB) => {
   const date = matchDate.split('T')[0];
   const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
+  // Se o jogo passou de 100 min há, considera encerrado mesmo sem status "completed"
+  const minSinceKickoff = (Date.now() - new Date(matchDate).getTime()) / 60000;
   for (const d of [date, yesterday]) {
     try {
-      const r = await fetch(`${ESPN_URL.replace('/scoreboard','')}/../scoreboard?dates=${d.replace(/-/g,'')}`
-        .replace('scoreboard/../scoreboard', 'scoreboard'));
-      // URL simplificada:
       const espnScoreboardUrl = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldcup/scoreboard?dates=${d.replace(/-/g,'')}`;
       const rs = await fetch(espnScoreboardUrl);
       if (!rs.ok) continue;
       const data = await rs.json();
       for (const ev of (data.events || [])) {
         const comp = ev.competitions?.[0];
-        if (!comp?.status?.type?.completed) continue;
+        if (!comp) continue;
+        // Pula só se ainda em andamento E menos de 100 min do kick-off
+        if (!comp.status?.type?.completed && minSinceKickoff < 100) continue;
         const homeC = comp.competitors?.find(c => c.homeAway === 'home');
         const awayC = comp.competitors?.find(c => c.homeAway === 'away');
         if (!homeC || !awayC) continue;
-        const h = homeC.team.displayName, a = awayC.team.displayName;
-        if (!((h===nameA&&a===nameB)||(h===nameB&&a===nameA))) continue;
-        // Encontrou — busca os eventos do summary
-        const homeIsTeamA = h === nameA;
+        const h    = homeC.team.displayName, a = awayC.team.displayName;
+        const hAlt = ESPN_ABBR_TO_NAME[homeC.team.abbreviation] || h;
+        const aAlt = ESPN_ABBR_TO_NAME[awayC.team.abbreviation] || a;
+        const nm = (x,y) => (x===nameA&&y===nameB)||(x===nameB&&y===nameA);
+        if (!nm(h,a) && !nm(hAlt,aAlt)) continue;
+        const homeIsTeamA = nm(h,a) ? (h===nameA) : (hAlt===nameA);
         const homeTeamId  = homeC.team.id;
         const awayTeamId  = awayC.team.id;
         const sum = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldcup/summary?event=${ev.id}`);
@@ -130,10 +153,12 @@ const autoValidateExtras = async (supabase, match, scoreA, scoreB, afFixtureId) 
     let homeIsTeamA, homeTeamId, awayTeamId, events = [], status = 'FT';
     const nameA = DB_TO_API[match.team_a] || match.team_a;
     const nameB = DB_TO_API[match.team_b] || match.team_b;
+    // Usa o ID passado ou o salvo no banco durante a fase ao vivo
+    const fixtureId = afFixtureId || match.api_fixture_id;
 
-    // 1. API-Football com fixture ID conhecido (detectado ao vivo)
-    if (afFixtureId && API_KEY) {
-      const r = await fetch(`https://v3.football.api-sports.io/fixtures?id=${afFixtureId}`, { headers: { 'x-apisports-key': API_KEY } });
+    // 1. API-Football com fixture ID (passado ou guardado no banco)
+    if (fixtureId && API_KEY) {
+      const r = await fetch(`https://v3.football.api-sports.io/fixtures?id=${fixtureId}`, { headers: { 'x-apisports-key': API_KEY } });
       if (r.ok) {
         const d = await r.json();
         const fixture = d.response?.[0];
@@ -142,7 +167,7 @@ const autoValidateExtras = async (supabase, match, scoreA, scoreB, afFixtureId) 
           homeTeamId  = fixture.teams.home.id;
           awayTeamId  = fixture.teams.away.id;
           status      = fixture.fixture.status.short;
-          const evRes = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${afFixtureId}`, { headers: { 'x-apisports-key': API_KEY } });
+          const evRes = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${fixtureId}`, { headers: { 'x-apisports-key': API_KEY } });
           if (evRes.ok) events = (await evRes.json()).response || [];
         }
       }
@@ -438,6 +463,7 @@ exports.handler = async () => {
       is_locked: true,
       match_status: status,
       elapsed_time: f.fixture.status.elapsed ?? null,
+      ...(f._afId ? { api_fixture_id: f._afId } : {}),
     }).eq('id', match.id);
 
     if (error) { console.error('[sync-scores] update error:', error.message); continue; }
