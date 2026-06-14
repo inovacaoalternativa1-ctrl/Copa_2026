@@ -243,9 +243,47 @@ exports.handler = async (event) => {
   // 2. Fallback ESPN
   if (!info) info = await findViaESPN(match.match_date, nameA, nameB);
 
+  // ── Fallback por placar: valida o que é determinável sem eventos ─────────────
   if (!info) {
-    console.warn('[validate-extras] Jogo não encontrado em nenhuma API');
-    return { statusCode:200, headers, body: JSON.stringify({ validated:0, error:'Jogo não encontrado nas APIs' }) };
+    console.warn('[validate-extras] Nenhuma API encontrou o jogo — validando pelo placar');
+    const status = match.match_status || 'FT';
+    // Apenas as perguntas com resposta certa pelo placar/status
+    const scoreResults = {
+      // Primeiro Time a Marcar: se só um time marcou, é ele; 0×0 = nenhum
+      3: scoreA > 0 && scoreB === 0 ? { team:'A' }
+       : scoreB > 0 && scoreA === 0 ? { team:'B' }
+       : scoreA === 0 && scoreB === 0 ? { team:'none' }
+       : null,
+      // Haiti marcou no 1T: impossível se Haiti não marcou nada
+      4: scoreA === 0 ? { answer:'no' } : null,
+      // Escócia marcou no 1T: impossível se Escócia não marcou nada
+      5: scoreB === 0 ? { answer:'no' } : null,
+      // Ambos marcam
+      12: { answer: scoreA > 0 && scoreB > 0 ? 'yes' : 'no' },
+      // Prorrogação
+      15: { answer: status === 'AET' || status === 'PEN' ? 'yes' : 'no' },
+      // Pênaltis
+      16: { answer: status === 'PEN' ? 'yes' : 'no' },
+    };
+
+    const validated = [];
+    for (const [typeIdStr, result] of Object.entries(scoreResults)) {
+      if (!result) continue; // null = inconclusivo, pula
+      const typeId = parseInt(typeIdStr);
+      const { error } = await supabase.from('extra_results').upsert(
+        { match_id: matchId, extra_type_id: typeId, official_result: result, is_validated: true, validated_at: new Date().toISOString(), validated_by: null },
+        { onConflict: 'match_id,extra_type_id' }
+      );
+      if (!error) validated.push(typeId);
+    }
+    if (validated.length > 0) {
+      try { await supabase.rpc('fn_recalculate_all_user_scores'); } catch(e) {}
+    }
+    console.log(`[validate-extras] Score-only: ${validated.length} extras validados`);
+    return { statusCode:200, headers, body: JSON.stringify({
+      validated: validated.length, source: 'score-only', events: 0,
+      warning: `Jogo não encontrado nas APIs. ${validated.length}/16 validados pelo placar. Valide os demais manualmente.`
+    })};
   }
 
   console.log(`[validate-extras] Encontrado via ${info.source}, homeIsTeamA=${info.homeIsTeamA}`);
