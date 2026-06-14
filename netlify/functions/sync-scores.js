@@ -283,7 +283,6 @@ exports.handler = async () => {
   if (!activeMatches.length) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo iniciado ainda' }) };
 
   const AF_KEY = process.env.API_FOOTBALL_KEY || process.env.REACT_APP_API_FOOTBALL_KEY;
-  if (!AF_KEY) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'REACT_APP_API_FOOTBALL_KEY não configurada' }) };
 
   // API_TO_DB: English → Portuguese, com SAFE_OVERRIDES sobrescrevendo
   const API_TO_DB = Object.fromEntries(
@@ -385,7 +384,7 @@ exports.handler = async () => {
   const unmatched = () => activeMatches.filter(m => !fixtureByMatchId.has(m.id));
 
   // ── Etapa 1: API-Football fixtures?live=all ──────────────────────────────────
-  try {
+  if (AF_KEY) try {
     const liveRes = await fetch(
       'https://v3.football.api-sports.io/fixtures?live=all',
       { headers: { 'x-apisports-key': AF_KEY } }
@@ -399,7 +398,7 @@ exports.handler = async () => {
   } catch(e) { console.warn('[sync] Etapa 1 erro:', e.message); }
 
   // ── Etapa 2: API-Football por data (jogos encerrados hoje/ontem) ─────────────
-  if (unmatched().length) {
+  if (AF_KEY && unmatched().length) {
     try {
       const today     = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -495,7 +494,7 @@ exports.handler = async () => {
 
   // ── Etapa 5: AF team/last10 (jogos > 90 min que ainda não foram encontrados) ──
   const lateUnmatched = unmatched().filter(m => (now - new Date(m.match_date).getTime())/60000 >= 90);
-  for (const am of lateUnmatched.slice(0, 4)) {
+  for (const am of (AF_KEY ? lateUnmatched.slice(0, 4) : [])) {
     const nameA = DB_TO_API[am.team_a] || am.team_a;
     try {
       const tr = await fetch(
