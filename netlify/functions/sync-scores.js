@@ -578,25 +578,6 @@ exports.handler = async () => {
     }
   }
 
-  // Auto-close: jogos presos como "ao vivo" há mais de 150 min do kick-off
-  // (150 min é impossível para qualquer partida real, incluindo prorrogação + pênaltis)
-  const TIMEOUT_MIN = 150;
-  for (const m of activeMatches) {
-    const minElapsed = (now - new Date(m.match_date).getTime()) / 60000;
-    if (minElapsed < TIMEOUT_MIN) continue;
-    if (updated.some(u => u.match.id === m.id)) continue; // já atualizado neste ciclo
-    const scoreA = m.score_a ?? 0;
-    const scoreB = m.score_b ?? 0;
-    console.warn(`[sync-scores] auto-close timeout (${Math.round(minElapsed)}min): ${m.team_a} ${scoreA}×${scoreB} ${m.team_b}`);
-    const { error: tcErr } = await supabase.from('matches').update({
-      is_finished: true, is_locked: true, match_status: 'FT', elapsed_time: 90,
-    }).eq('id', m.id);
-    if (!tcErr) {
-      updated.push({ match: m, scoreA, scoreB });
-      await autoValidateExtras(supabase, m, scoreA, scoreB, null);
-    }
-  }
-
   // Recalcula pontuações de todos os usuários se algum jogo foi encerrado
   if (updated.length > 0) {
     try {
