@@ -154,9 +154,15 @@ const fetchESPNEvents = async (eventId, homeTeamId, awayTeamId) => {
 
 // Find the fixture — tenta API-Football primeiro, depois ESPN
 const findFixture = async (matchDate, teamA, teamB) => {
-  const af = await findFixtureAF(matchDate, teamA, teamB);
-  if (af) return af;
-  console.warn('[autoExtras] API-Football não encontrou fixture, tentando ESPN...');
+  if (API_KEY) {
+    try {
+      const af = await findFixtureAF(matchDate, teamA, teamB);
+      if (af) return af;
+    } catch(e) {
+      console.warn('[autoExtras] API-Football falhou:', e.message);
+    }
+  }
+  console.warn('[autoExtras] Tentando ESPN para', teamA, 'vs', teamB);
   return findFixtureESPN(matchDate, teamA, teamB);
 };
 
