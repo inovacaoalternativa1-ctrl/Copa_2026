@@ -250,17 +250,21 @@ export default function AdminPage() {
     }
   };
 
-  // ── Auto-validar extras manualmente (para jogos já encerrados) ─────────────
+  // ── Auto-validar extras via Netlify function (server-side, service key) ─────
   const handleAutoExtras = async () => {
     if (!selMatch) return;
     setAutoExtrasLoading(true);
     setStatus(null);
     try {
-      const scoreA = selMatch.is_finished ? selMatch.score_a : parseInt(resA);
-      const scoreB = selMatch.is_finished ? selMatch.score_b : parseInt(resB);
-      const result = await autoValidateMatchExtras(supabase, selMatch, scoreA, scoreB, user.id);
-      const count = result?.validated?.length || 0;
-      setStatus({ type: count > 0 ? 'success' : 'error', msg: count > 0 ? `✅ ${count} extras validados automaticamente via API-Football!` : '⚠️ Nenhum extra encontrado na API. O jogo pode não estar disponível ainda.' });
+      const res = await fetch(`/.netlify/functions/validate-extras?match_id=${selMatch.id}`);
+      const result = await res.json();
+      const count = result?.validated || 0;
+      if (count > 0) {
+        setStatus({ type: 'success', msg: `✅ ${count} extras validados via ${result.source?.toUpperCase() || 'API'}!` });
+        loadMatches();
+      } else {
+        setStatus({ type: 'error', msg: result.error || '⚠️ Nenhum extra encontrado na API. O jogo pode não estar disponível ainda.' });
+      }
     } catch (e) {
       setStatus({ type: 'error', msg: `Erro: ${e.message}` });
     } finally {
