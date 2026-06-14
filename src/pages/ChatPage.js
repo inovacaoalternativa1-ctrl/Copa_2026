@@ -275,10 +275,14 @@ export default function ChatPage() {
         .lte('match_date', now);
       const matches = data || [];
       setLiveMatches(matches);
-      // Sincroniza o timer local com o valor real do banco
+      // Sincroniza o timer local com o valor real do banco (só se o banco estiver à frente)
       setLiveElapsed(prev => {
         const next = { ...prev };
-        matches.forEach(m => { if (m.elapsed_time != null) next[m.id] = m.elapsed_time; });
+        matches.forEach(m => {
+          if (m.elapsed_time != null && (prev[m.id] == null || m.elapsed_time > prev[m.id])) {
+            next[m.id] = m.elapsed_time;
+          }
+        });
         return next;
       });
     };
