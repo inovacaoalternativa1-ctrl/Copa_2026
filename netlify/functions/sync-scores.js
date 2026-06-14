@@ -75,69 +75,120 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, score
   };
 };
 
+// Busca eventos via ESPN summary (fallback quando API-Football não retorna eventos)
+const espnFindAndFetchEvents = async (matchDate, nameA, nameB) => {
+  const date = matchDate.split('T')[0];
+  const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
+  for (const d of [date, yesterday]) {
+    try {
+      const r = await fetch(`${ESPN_URL.replace('/scoreboard','')}/../scoreboard?dates=${d.replace(/-/g,'')}`
+        .replace('scoreboard/../scoreboard', 'scoreboard'));
+      // URL simplificada:
+      const espnScoreboardUrl = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldcup/scoreboard?dates=${d.replace(/-/g,'')}`;
+      const rs = await fetch(espnScoreboardUrl);
+      if (!rs.ok) continue;
+      const data = await rs.json();
+      for (const ev of (data.events || [])) {
+        const comp = ev.competitions?.[0];
+        if (!comp?.status?.type?.completed) continue;
+        const homeC = comp.competitors?.find(c => c.homeAway === 'home');
+        const awayC = comp.competitors?.find(c => c.homeAway === 'away');
+        if (!homeC || !awayC) continue;
+        const h = homeC.team.displayName, a = awayC.team.displayName;
+        if (!((h===nameA&&a===nameB)||(h===nameB&&a===nameA))) continue;
+        // Encontrou — busca os eventos do summary
+        const homeIsTeamA = h === nameA;
+        const homeTeamId  = homeC.team.id;
+        const awayTeamId  = awayC.team.id;
+        const sum = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldcup/summary?event=${ev.id}`);
+        if (!sum.ok) return null;
+        const sd = await sum.json();
+        const events = [];
+        for (const play of (sd.plays || [])) {
+          const tt = (play.type?.text || '').toLowerCase();
+          const tid = play.team?.id || null;
+          const el  = play.clock?.value ? Math.ceil(play.clock.value / 60) : 45;
+          if (play.scoringPlay || tt.includes('goal')) {
+            events.push({ type:'Goal', detail: tt.includes('own')?'Own Goal':tt.includes('pen')?'Penalty':'Normal Goal', team:{id:tid}, time:{elapsed:el,extra:null} });
+          } else if (tt.includes('red')) {
+            events.push({ type:'Card', detail: tt.includes('yellow')?'Yellow Red Card':'Red Card', team:{id:tid}, time:{elapsed:el,extra:null} });
+          } else if (tt.includes('yellow')||tt.includes('caution')||tt.includes('booking')) {
+            events.push({ type:'Card', detail:'Yellow Card', team:{id:tid}, time:{elapsed:el,extra:null} });
+          }
+        }
+        console.log(`[sync-scores] ESPN events para ${nameA} vs ${nameB}: ${events.length}`);
+        return { events, homeIsTeamA, homeTeamId, awayTeamId };
+      }
+    } catch(e) { console.warn('[sync-scores] ESPN events erro:', e.message); }
+  }
+  return null;
+};
+
 const autoValidateExtras = async (supabase, match, scoreA, scoreB, afFixtureId) => {
   const API_KEY = process.env.REACT_APP_API_FOOTBALL_KEY;
-  if (!API_KEY) return;
   try {
-    let fixture = null;
+    let homeIsTeamA, homeTeamId, awayTeamId, events = [], status = 'FT';
+    const nameA = DB_TO_API[match.team_a] || match.team_a;
+    const nameB = DB_TO_API[match.team_b] || match.team_b;
 
-    if (afFixtureId) {
-      // ID já conhecido (jogo foi detectado ao vivo) — busca direto
-      const r = await fetch(
-        `https://v3.football.api-sports.io/fixtures?id=${afFixtureId}`,
-        { headers: { 'x-apisports-key': API_KEY } }
-      );
-      if (!r.ok) return;
-      const d = await r.json();
-      fixture = d.response?.[0] || null;
-    } else {
-      // Fallback: busca por data sem filtro de liga (free plan)
-      const date = match.match_date.split('T')[0];
-      const nameA = DB_TO_API[match.team_a] || match.team_a;
-      const nameB = DB_TO_API[match.team_b] || match.team_b;
-      for (const dateStr of [date, new Date(new Date(date).getTime()-86400000).toISOString().split('T')[0]]) {
-        const r = await fetch(
-          `https://v3.football.api-sports.io/fixtures?date=${dateStr}`,
-          { headers: { 'x-apisports-key': API_KEY } }
-        );
-        if (!r.ok) continue;
+    // 1. API-Football com fixture ID conhecido (detectado ao vivo)
+    if (afFixtureId && API_KEY) {
+      const r = await fetch(`https://v3.football.api-sports.io/fixtures?id=${afFixtureId}`, { headers: { 'x-apisports-key': API_KEY } });
+      if (r.ok) {
         const d = await r.json();
-        fixture = (d.response||[]).find(f => {
-          const h = f.teams.home.name, a = f.teams.away.name;
-          return (h===nameA&&a===nameB)||(h===nameB&&a===nameA);
-        }) || null;
-        if (fixture) break;
+        const fixture = d.response?.[0];
+        if (fixture) {
+          homeIsTeamA = fixture.teams.home.name === nameA;
+          homeTeamId  = fixture.teams.home.id;
+          awayTeamId  = fixture.teams.away.id;
+          status      = fixture.fixture.status.short;
+          const evRes = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${afFixtureId}`, { headers: { 'x-apisports-key': API_KEY } });
+          if (evRes.ok) events = (await evRes.json()).response || [];
+        }
       }
     }
 
-    if (!fixture) {
-      console.log(`[sync-scores] extras: fixture não encontrado para jogo ${match.id}`);
+    // 2. API-Football por data (fallback quando não tem fixture ID)
+    if (!events.length && API_KEY) {
+      const date = match.match_date.split('T')[0];
+      for (const ds of [date, new Date(new Date(date).getTime()-86400000).toISOString().split('T')[0]]) {
+        const r = await fetch(`https://v3.football.api-sports.io/fixtures?date=${ds}`, { headers: { 'x-apisports-key': API_KEY } });
+        if (!r.ok) continue;
+        const fixture = (await r.json()).response?.find(f => {
+          const h=f.teams.home.name, a=f.teams.away.name;
+          return (h===nameA&&a===nameB)||(h===nameB&&a===nameA);
+        });
+        if (!fixture) continue;
+        homeIsTeamA = fixture.teams.home.name === nameA;
+        homeTeamId  = fixture.teams.home.id;
+        awayTeamId  = fixture.teams.away.id;
+        status      = fixture.fixture.status.short;
+        const evRes = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${fixture.fixture.id}`, { headers: { 'x-apisports-key': API_KEY } });
+        if (evRes.ok) events = (await evRes.json()).response || [];
+        break;
+      }
+    }
+
+    // 3. ESPN como fallback final (público, sem chave)
+    if (!events.length) {
+      const espn = await espnFindAndFetchEvents(match.match_date, nameA, nameB);
+      if (espn) { events = espn.events; homeIsTeamA = espn.homeIsTeamA; homeTeamId = espn.homeTeamId; awayTeamId = espn.awayTeamId; }
+    }
+
+    if (homeIsTeamA === undefined) {
+      console.log(`[sync-scores] extras: jogo ${match.id} não encontrado em nenhuma API`);
       return;
     }
 
-    const evRes = await fetch(
-      `https://v3.football.api-sports.io/fixtures/events?fixture=${fixture.fixture.id}`,
-      { headers: { 'x-apisports-key': API_KEY } }
-    );
-    if (!evRes.ok) return;
-    const evData = await evRes.json();
-    const nameA = DB_TO_API[match.team_a] || match.team_a;
-    const homeIsTeamA = fixture.teams.home.name === nameA;
-    const results = buildResults(
-      evData.response||[], fixture.fixture.status.short,
-      homeIsTeamA, fixture.teams.home.id, fixture.teams.away.id, scoreA, scoreB
-    );
+    const results = buildResults(events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB);
     for (const [typeId, result] of Object.entries(results)) {
       await supabase.from('extra_results').upsert({
-        match_id: match.id,
-        extra_type_id: parseInt(typeId),
-        official_result: result,
-        is_validated: true,
-        validated_at: new Date().toISOString(),
-        validated_by: null,
+        match_id: match.id, extra_type_id: parseInt(typeId),
+        official_result: result, is_validated: true,
+        validated_at: new Date().toISOString(), validated_by: null,
       }, { onConflict: 'match_id,extra_type_id' });
     }
-    console.log(`[sync-scores] extras validados para jogo ${match.id}`);
+    console.log(`[sync-scores] extras validados para jogo ${match.id} (${events.length} eventos, fonte: ${events.length ? (afFixtureId?'AF-live':'AF-date/ESPN') : 'sem-eventos'})`);
   } catch(e) {
     console.error('[sync-scores] extras error:', e.message);
   }
