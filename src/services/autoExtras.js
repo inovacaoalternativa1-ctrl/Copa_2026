@@ -55,39 +55,109 @@ const apiFetch = async (path) => {
   return res.json();
 };
 
-// Find the API-Football fixture for a given Supabase match
-const findFixture = async (matchDate, teamA, teamB) => {
+const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldcup';
+
+// Busca fixture via API-Football (plano free: data atual funciona)
+const findFixtureAF = async (matchDate, teamA, teamB) => {
   const date = matchDate.split('T')[0];
   const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
-  // Plano free não suporta filtro de liga em histórico — busca por data sem league/season
-  let data = await apiFetch(`/fixtures?date=${date}`);
-  let fixtures = data.response || [];
-  if (!fixtures.length) {
-    data = await apiFetch(`/fixtures?date=${yesterday}`);
-    fixtures = data.response || [];
-  }
   const nameA = DB_TO_API[teamA] || teamA;
   const nameB = DB_TO_API[teamB] || teamB;
-
-  // Converte nome da API → nome no banco (tenta DB_TO_API reverso e aliases)
   const API_TO_DB_LOCAL = Object.fromEntries(Object.entries(DB_TO_API).map(([db, en]) => [en, db]));
   const apiToDb = name => API_TO_DB_LOCAL[name] || API_ALIASES[name] || name;
 
-  const fixture = fixtures.find(f => {
-    const hDb = apiToDb(f.teams.home.name);
-    const aDb = apiToDb(f.teams.away.name);
-    return (hDb === teamA && aDb === teamB) || (hDb === teamB && aDb === teamA);
-  });
+  for (const d of [date, yesterday]) {
+    const data = await apiFetch(`/fixtures?date=${d}`);
+    const fixture = (data.response || []).find(f => {
+      const hDb = apiToDb(f.teams.home.name);
+      const aDb = apiToDb(f.teams.away.name);
+      return (hDb === teamA && aDb === teamB) || (hDb === teamB && aDb === teamA);
+    });
+    if (fixture) {
+      return {
+        source: 'af',
+        fixtureId:   fixture.fixture.id,
+        status:      fixture.fixture.status.short,
+        homeIsTeamA: fixture.teams.home.name === nameA,
+        homeTeamId:  fixture.teams.home.id,
+        awayTeamId:  fixture.teams.away.id,
+      };
+    }
+  }
+  return null;
+};
 
-  if (!fixture) return null;
+// Busca fixture via ESPN (público, sem chave, retorna jogos do dia)
+const findFixtureESPN = async (matchDate, teamA, teamB) => {
+  const nameA = DB_TO_API[teamA] || teamA;
+  const nameB = DB_TO_API[teamB] || teamB;
+  const date = matchDate.split('T')[0];
+  const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
 
-  return {
-    fixtureId:  fixture.fixture.id,
-    status:     fixture.fixture.status.short,  // FT, AET, PEN
-    homeIsTeamA: fixture.teams.home.name === nameA,
-    homeTeamId:  fixture.teams.home.id,
-    awayTeamId:  fixture.teams.away.id,
-  };
+  for (const d of [date, yesterday]) {
+    const ds = d.replace(/-/g, '');
+    const r = await fetch(`${ESPN_BASE}/scoreboard?dates=${ds}`);
+    if (!r.ok) continue;
+    const data = await r.json();
+    for (const ev of (data.events || [])) {
+      const comp = ev.competitions?.[0];
+      if (!comp) continue;
+      const homeC = comp.competitors?.find(c => c.homeAway === 'home');
+      const awayC = comp.competitors?.find(c => c.homeAway === 'away');
+      if (!homeC || !awayC) continue;
+      const h = homeC.team.displayName;
+      const a = awayC.team.displayName;
+      if ((h === nameA && a === nameB) || (h === nameB && a === nameA)) {
+        return {
+          source: 'espn',
+          eventId:     ev.id,
+          status:      comp.status?.type?.name || 'FT',
+          homeIsTeamA: h === nameA,
+          homeTeamId:  homeC.team.id,
+          awayTeamId:  awayC.team.id,
+        };
+      }
+    }
+  }
+  return null;
+};
+
+// Converte plays da ESPN para o formato esperado por buildResults
+const fetchESPNEvents = async (eventId, homeTeamId, awayTeamId) => {
+  const r = await fetch(`${ESPN_BASE}/summary?event=${eventId}`);
+  if (!r.ok) return [];
+  const data = await r.json();
+  const plays = data.plays || [];
+  const events = [];
+  for (const play of plays) {
+    const typeText = (play.type?.text || play.type?.name || '').toLowerCase();
+    const teamId = play.team?.id || null;
+    const elapsed = play.clock?.value ? Math.ceil(play.clock.value / 60) : (play.period?.number === 1 ? 45 : 90);
+
+    if (play.scoringPlay || typeText.includes('goal')) {
+      events.push({
+        type: 'Goal',
+        detail: typeText.includes('own') ? 'Own Goal' : typeText.includes('penalty') ? 'Penalty' : 'Normal Goal',
+        team: { id: teamId },
+        time: { elapsed, extra: null },
+      });
+    } else if (typeText.includes('yellow-red') || typeText.includes('second yellow') || typeText.includes('yellowred')) {
+      events.push({ type: 'Card', detail: 'Yellow Red Card', team: { id: teamId }, time: { elapsed, extra: null } });
+    } else if (typeText.includes('red card') || typeText === 'red') {
+      events.push({ type: 'Card', detail: 'Red Card', team: { id: teamId }, time: { elapsed, extra: null } });
+    } else if (typeText.includes('yellow') || typeText.includes('caution') || typeText === 'booking') {
+      events.push({ type: 'Card', detail: 'Yellow Card', team: { id: teamId }, time: { elapsed, extra: null } });
+    }
+  }
+  return events;
+};
+
+// Find the fixture — tenta API-Football primeiro, depois ESPN
+const findFixture = async (matchDate, teamA, teamB) => {
+  const af = await findFixtureAF(matchDate, teamA, teamB);
+  if (af) return af;
+  console.warn('[autoExtras] API-Football não encontrou fixture, tentando ESPN...');
+  return findFixtureESPN(matchDate, teamA, teamB);
 };
 
 // Build official results for all 16 extra types
@@ -154,22 +224,29 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, score
  * @returns {{ validated: number[], skipped: number[] }}
  */
 export const autoValidateMatchExtras = async (supabase, match, scoreA, scoreB, adminId) => {
-  if (!API_KEY) {
-    console.warn('[autoExtras] REACT_APP_API_FOOTBALL_KEY não configurada — pulando validação automática de extras');
-    return { validated: [], skipped: [] };
-  }
-
   try {
     const info = await findFixture(match.match_date, match.team_a, match.team_b);
     if (!info) {
-      console.warn(`[autoExtras] Jogo não encontrado na API: ${match.team_a} vs ${match.team_b}`);
+      console.warn(`[autoExtras] Jogo não encontrado em nenhuma API: ${match.team_a} vs ${match.team_b}`);
       return { validated: [], skipped: [] };
     }
 
-    const { fixtureId, status, homeIsTeamA, homeTeamId, awayTeamId } = info;
+    const { source, homeIsTeamA, homeTeamId, awayTeamId } = info;
 
-    const eventsData = await apiFetch(`/fixtures/events?fixture=${fixtureId}`);
-    const events = eventsData.response || [];
+    let events;
+    if (source === 'espn') {
+      console.log(`[autoExtras] Usando ESPN para eventos do jogo ${match.id}`);
+      events = await fetchESPNEvents(info.eventId, homeTeamId, awayTeamId);
+    } else {
+      if (!API_KEY) {
+        console.warn('[autoExtras] REACT_APP_API_FOOTBALL_KEY não configurada');
+        return { validated: [], skipped: [] };
+      }
+      const eventsData = await apiFetch(`/fixtures/events?fixture=${info.fixtureId}`);
+      events = eventsData.response || [];
+    }
+
+    const status = info.status || 'FT';
 
     const results = buildResults(events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB);
 
