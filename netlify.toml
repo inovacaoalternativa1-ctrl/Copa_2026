@@ -4,7 +4,7 @@
   functions = "netlify/functions"
 
 [functions."sync-scores"]
-  schedule = "*/5 * * * *"
+  schedule = "* * * * *"
 
 [[redirects]]
   from   = "/*"

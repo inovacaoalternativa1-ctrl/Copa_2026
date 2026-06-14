@@ -282,7 +282,7 @@ exports.handler = async () => {
   const activeMatches = matches.filter(m => (now - new Date(m.match_date).getTime()) / 60000 >= -30);
   if (!activeMatches.length) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo iniciado ainda' }) };
 
-  const AF_KEY = process.env.REACT_APP_API_FOOTBALL_KEY;
+  const AF_KEY = process.env.API_FOOTBALL_KEY || process.env.REACT_APP_API_FOOTBALL_KEY;
   if (!AF_KEY) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'REACT_APP_API_FOOTBALL_KEY não configurada' }) };
 
   // API_TO_DB: English → Portuguese, com SAFE_OVERRIDES sobrescrevendo
@@ -421,7 +421,7 @@ exports.handler = async () => {
   }
 
   // ── Etapa 3: football-data.org (Copa encerrada, plano free) ─────────────────
-  const FD_KEY = process.env.FOOTBALL_DATA_KEY;
+  const FD_KEY = process.env.FOOTBALL_DATA_API_KEY || process.env.FOOTBALL_DATA_KEY || process.env.REACT_APP_FOOTBALL_API_KEY;
   if (unmatched().length && FD_KEY) {
     try {
       const fdRes = await fetch(

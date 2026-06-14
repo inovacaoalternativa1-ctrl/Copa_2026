@@ -1,6 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 
-const AF_KEY    = process.env.REACT_APP_API_FOOTBALL_KEY;
+const AF_KEY    = process.env.API_FOOTBALL_KEY || process.env.REACT_APP_API_FOOTBALL_KEY;
 const AF_BASE   = 'https://v3.football.api-sports.io';
 const ESPN_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldcup';
 
