@@ -133,6 +133,7 @@ export default function ChatPage() {
   const [showStickers, setShowStickers] = useState(false);
   const [avatarViewer, setAvatarViewer] = useState({ open: false, src: null, name: '', color: '' });
   const [liveMatches, setLiveMatches] = useState([]);
+  const [liveElapsed, setLiveElapsed] = useState({});
   const [nextMatch, setNextMatch]     = useState(null);
   const [countdown, setCountdown]     = useState('');
   const bottomRef      = useRef(null);
@@ -263,7 +264,7 @@ export default function ChatPage() {
 
   // ── Jogos ao vivo ────────────────────────────────────────────────────────
   useEffect(() => {
-    const fetch = async () => {
+    const fetchLive = async () => {
       const now = new Date().toISOString();
       const cutoff = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
@@ -272,12 +273,34 @@ export default function ChatPage() {
         .eq('is_finished', false)
         .gte('match_date', cutoff)
         .lte('match_date', now);
-      setLiveMatches(data || []);
+      const matches = data || [];
+      setLiveMatches(matches);
+      // Sincroniza o timer local com o valor real do banco
+      setLiveElapsed(prev => {
+        const next = { ...prev };
+        matches.forEach(m => { if (m.elapsed_time != null) next[m.id] = m.elapsed_time; });
+        return next;
+      });
     };
-    fetch();
-    const t = setInterval(fetch, 30_000);
+    fetchLive();
+    const t = setInterval(fetchLive, 30_000);
     return () => clearInterval(t);
   }, []);
+
+  // Incrementa o tempo exibido a cada minuto (jogo em andamento)
+  useEffect(() => {
+    const PAUSED = new Set(['HT', 'BT', 'FT', 'AET', 'PEN', 'P']);
+    const t = setInterval(() => {
+      setLiveElapsed(prev => {
+        const next = { ...prev };
+        liveMatches.forEach(m => {
+          if (!PAUSED.has(m.match_status) && next[m.id] != null) next[m.id] += 1;
+        });
+        return next;
+      });
+    }, 60_000);
+    return () => clearInterval(t);
+  }, [liveMatches]);
 
   // ── Próximo jogo ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -406,7 +429,7 @@ export default function ChatPage() {
       {liveMatches.length > 0 && (
         <div className="live-banner">
           {liveMatches.map(m => {
-            const st = statusLabel(m.match_status, m.elapsed_time);
+            const st = statusLabel(m.match_status, liveElapsed[m.id] ?? m.elapsed_time);
             const isPaused = st?.paused ?? false;
             const label = st?.text || 'AO VIVO';
             return (
