@@ -194,7 +194,37 @@ const autoValidateExtras = async (supabase, match, scoreA, scoreB, afFixtureId) 
       }
     }
 
-    // 3. ESPN como fallback final (público, sem chave)
+    // 3. API-Football pelos últimos jogos do time (funciona mesmo após encerrar)
+    if (!events.length && API_KEY) {
+      try {
+        const teamRes = await fetch(`https://v3.football.api-sports.io/teams?name=${encodeURIComponent(nameA)}`, { headers:{ 'x-apisports-key': API_KEY } });
+        if (teamRes.ok) {
+          const teamId = (await teamRes.json()).response?.[0]?.team?.id;
+          if (teamId) {
+            const fxRes = await fetch(`https://v3.football.api-sports.io/fixtures?team=${teamId}&last=10`, { headers:{ 'x-apisports-key': API_KEY } });
+            if (fxRes.ok) {
+              const fixture = (await fxRes.json()).response?.find(f => {
+                const h=f.teams.home.name, a=f.teams.away.name;
+                return (h===nameA&&a===nameB)||(h===nameB&&a===nameA)||
+                       (norm(resolveTeam(h))===norm(match.team_a)&&norm(resolveTeam(a))===norm(match.team_b))||
+                       (norm(resolveTeam(h))===norm(match.team_b)&&norm(resolveTeam(a))===norm(match.team_a));
+              });
+              if (fixture) {
+                homeIsTeamA = fixture.teams.home.name === nameA || resolveTeam(fixture.teams.home.name) === match.team_a;
+                homeTeamId  = fixture.teams.home.id;
+                awayTeamId  = fixture.teams.away.id;
+                status      = fixture.fixture.status.short;
+                const evRes = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${fixture.fixture.id}`, { headers:{ 'x-apisports-key': API_KEY } });
+                if (evRes.ok) events = (await evRes.json()).response || [];
+                console.log(`[sync-scores] AF team/last10: fixture ${fixture.fixture.id}, ${events.length} eventos`);
+              }
+            }
+          }
+        }
+      } catch(e) { console.warn('[sync-scores] AF team/last erro:', e.message); }
+    }
+
+    // 4. ESPN como fallback final (público, sem chave)
     if (!events.length) {
       const espn = await espnFindAndFetchEvents(match.match_date, nameA, nameB);
       if (espn) { events = espn.events; homeIsTeamA = espn.homeIsTeamA; homeTeamId = espn.homeTeamId; awayTeamId = espn.awayTeamId; }

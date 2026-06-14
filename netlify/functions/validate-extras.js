@@ -103,7 +103,7 @@ const findViaAF = async (matchDate, nameA, nameB, ptA, ptB, savedFixtureId = nul
     } catch(e) { console.warn('[validate-extras] AF fixture direto erro:', e.message); }
   }
 
-  // 2. Busca por data (inglês vs inglês, e também via apiToDb vs português)
+  // 2. Busca por data (hoje e ontem)
   const date = matchDate.split('T')[0];
   const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
   for (const d of [date, yesterday]) {
@@ -114,7 +114,6 @@ const findViaAF = async (matchDate, nameA, nameB, ptA, ptB, savedFixtureId = nul
       const f = (data.response || []).find(f => {
         const rawH = f.teams.home.name, rawA = f.teams.away.name;
         const dbH  = apiToDb(rawH),    dbA  = apiToDb(rawA);
-        // Tenta inglês direto OU via português
         return (rawH===nameA && rawA===nameB) || (rawH===nameB && rawA===nameA) ||
                (dbH===ptA   && dbA===ptB)    || (dbH===ptB    && dbA===ptA);
       });
@@ -124,6 +123,34 @@ const findViaAF = async (matchDate, nameA, nameB, ptA, ptB, savedFixtureId = nul
       }
     } catch(e) { console.warn('[validate-extras] AF data erro:', e.message); }
   }
+
+  // 3. Busca pelos últimos jogos do time via ID (funciona mesmo após a partida encerrar)
+  try {
+    const teamRes = await fetch(`${AF_BASE}/teams?name=${encodeURIComponent(nameA)}`, { headers:{ 'x-apisports-key': AF_KEY } });
+    if (teamRes.ok) {
+      const teamData = await teamRes.json();
+      const teamId = teamData.response?.[0]?.team?.id;
+      if (teamId) {
+        console.log(`[validate-extras] AF team search: ${nameA} → id=${teamId}`);
+        const fxRes = await fetch(`${AF_BASE}/fixtures?team=${teamId}&last=10`, { headers:{ 'x-apisports-key': AF_KEY } });
+        if (fxRes.ok) {
+          const fxData = await fxRes.json();
+          const f = (fxData.response || []).find(f => {
+            const rawH = f.teams.home.name, rawA = f.teams.away.name;
+            const dbH  = apiToDb(rawH),    dbA  = apiToDb(rawA);
+            return (rawH===nameA && rawA===nameB) || (rawH===nameB && rawA===nameA) ||
+                   (dbH===ptA   && dbA===ptB)    || (dbH===ptB    && dbA===ptA);
+          });
+          if (f) {
+            console.log(`[validate-extras] AF team last10: encontrou fixture ${f.fixture.id}`);
+            const isHomeA = f.teams.home.name===nameA || apiToDb(f.teams.home.name)===ptA;
+            return { source:'af', fixtureId: f.fixture.id, homeIsTeamA: isHomeA, homeTeamId: f.teams.home.id, awayTeamId: f.teams.away.id };
+          }
+        }
+      }
+    }
+  } catch(e) { console.warn('[validate-extras] AF team/last erro:', e.message); }
+
   return null;
 };
 
