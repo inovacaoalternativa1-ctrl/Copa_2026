@@ -128,41 +128,59 @@ const findViaAF = async (matchDate, nameA, nameB, ptA, ptB, savedFixtureId = nul
 };
 
 // ── ESPN ─────────────────────────────────────────────────────────────────────
+// Tenta múltiplas ligas ESPN e múltiplos dias para achar qualquer partida
+const ESPN_LEAGUES = [
+  'fifa.worldcup',
+  'intl-friendlies',
+  'concacaf.nations.league',
+  'uefa.nations',
+  'all',
+];
+const ESPN_SUMMARY_BASE = 'https://site.api.espn.com/apis/site/v2/sports/soccer';
+
 const findViaESPN = async (matchDate, nameA, nameB) => {
-  const date = matchDate.split('T')[0];
-  const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
+  const base = matchDate.split('T')[0];
+  const days = [0, 1, 2, 3].map(n => {
+    const d = new Date(new Date(base).getTime() - n * 86400000);
+    return d.toISOString().split('T')[0];
+  });
   const minSinceKickoff = (Date.now() - new Date(matchDate).getTime()) / 60000;
-  for (const d of [date, yesterday]) {
-    try {
-      const ds = d.replace(/-/g, '');
-      const r = await fetch(`${ESPN_BASE}/scoreboard?dates=${ds}`);
-      if (!r.ok) continue;
-      const data = await r.json();
-      console.log(`[validate-extras] ESPN scoreboard ${ds}: ${(data.events||[]).length} eventos`);
-      for (const ev of (data.events || [])) {
-        const comp = ev.competitions?.[0];
-        if (!comp) continue;
-        if (!comp.status?.type?.completed && minSinceKickoff < 100) continue;
-        const homeC = comp.competitors?.find(c => c.homeAway === 'home');
-        const awayC = comp.competitors?.find(c => c.homeAway === 'away');
-        if (!homeC || !awayC) continue;
-        const h    = homeC.team.displayName, a = awayC.team.displayName;
-        const hAlt = ESPN_ABBR[homeC.team.abbreviation] || h;
-        const aAlt = ESPN_ABBR[awayC.team.abbreviation] || a;
-        console.log(`[validate-extras] ESPN: ${h}(${homeC.team.abbreviation}) vs ${a}(${awayC.team.abbreviation})`);
-        const nm = (x,y) => (x===nameA&&y===nameB)||(x===nameB&&y===nameA);
-        if (!nm(h,a) && !nm(hAlt,aAlt)) continue;
-        const homeIsTeamA = nm(h,a) ? (h===nameA) : (hAlt===nameA);
-        return { source:'espn', eventId: ev.id, homeIsTeamA, homeTeamId: homeC.team.id, awayTeamId: awayC.team.id };
-      }
-    } catch(e) { console.warn('[validate-extras] ESPN scoreboard erro:', e.message); }
+
+  for (const league of ESPN_LEAGUES) {
+    for (const d of days) {
+      try {
+        const ds = d.replace(/-/g, '');
+        const url = `${ESPN_SUMMARY_BASE}/${league}/scoreboard?dates=${ds}`;
+        const r = await fetch(url);
+        if (!r.ok) continue;
+        const data = await r.json();
+        const evts = data.events || [];
+        if (evts.length) console.log(`[validate-extras] ESPN ${league} ${ds}: ${evts.length} eventos`);
+        for (const ev of evts) {
+          const comp = ev.competitions?.[0];
+          if (!comp) continue;
+          if (!comp.status?.type?.completed && minSinceKickoff < 100) continue;
+          const homeC = comp.competitors?.find(c => c.homeAway === 'home');
+          const awayC = comp.competitors?.find(c => c.homeAway === 'away');
+          if (!homeC || !awayC) continue;
+          const h    = homeC.team.displayName, a = awayC.team.displayName;
+          const hAlt = ESPN_ABBR[homeC.team.abbreviation] || h;
+          const aAlt = ESPN_ABBR[awayC.team.abbreviation] || a;
+          const nm = (x,y) => (x===nameA&&y===nameB)||(x===nameB&&y===nameA);
+          if (!nm(h,a) && !nm(hAlt,aAlt)) continue;
+          const homeIsTeamA = nm(h,a) ? (h===nameA) : (hAlt===nameA);
+          console.log(`[validate-extras] ESPN encontrou em ${league}: ${h} vs ${a}`);
+          return { source:'espn', league, eventId: ev.id, homeIsTeamA, homeTeamId: homeC.team.id, awayTeamId: awayC.team.id };
+        }
+      } catch(e) { /* silencia erros de liga inválida */ }
+    }
   }
   return null;
 };
 
 // ── ESPN summary → events ─────────────────────────────────────────────────────
-const fetchESPNEvents = async (eventId) => {
-  const r = await fetch(`${ESPN_BASE}/summary?event=${eventId}`);
+const fetchESPNEvents = async (eventId, league = 'fifa.worldcup') => {
+  const r = await fetch(`${ESPN_SUMMARY_BASE}/${league}/summary?event=${eventId}`);
   if (!r.ok) return [];
   const data = await r.json();
   const events = [];
@@ -238,7 +256,7 @@ exports.handler = async (event) => {
     if (r.ok) { const d = await r.json(); events = d.response || []; }
     console.log(`[validate-extras] AF eventos: ${events.length}`);
   } else {
-    events = await fetchESPNEvents(info.eventId);
+    events = await fetchESPNEvents(info.eventId, info.league || 'fifa.worldcup');
   }
 
   const results = buildResults(events, match.match_status || 'FT', info.homeIsTeamA, info.homeTeamId, info.awayTeamId, scoreA, scoreB);
