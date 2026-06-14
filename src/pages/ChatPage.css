@@ -22,6 +22,23 @@
 }
 .live-banner-paused { background: linear-gradient(135deg, #1a1a3a 0%, #2d3566 100%); }
 .live-banner-paused .live-label { color: #f0c040; }
+.live-clock {
+  min-width: 54px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.14);
+  color: white;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 15px;
+  letter-spacing: 1px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.live-clock.halftime {
+  min-width: 84px;
+  background: rgba(245,166,35,.22);
+  color: var(--yellow);
+}
 .live-match-teams { display: flex; align-items: center; gap: 10px; flex: 1; justify-content: center; flex-wrap: wrap; }
 .live-flag { width: 32px; height: 24px; object-fit: contain; border-radius: 3px; }
 .live-team-name { font-weight: 700; font-size: 13px; color: rgba(255,255,255,.9); }

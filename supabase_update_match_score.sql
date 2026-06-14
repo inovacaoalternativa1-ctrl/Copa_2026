@@ -20,8 +20,7 @@ BEGIN
     score_a    = p_score_a,
     score_b    = p_score_b,
     is_finished = CASE WHEN p_finished THEN TRUE ELSE is_finished END,
-    is_locked   = CASE WHEN p_finished THEN TRUE ELSE is_locked END,
-    updated_at = NOW()
+    is_locked   = TRUE
   WHERE id = p_match_id;
 END;
 $$;

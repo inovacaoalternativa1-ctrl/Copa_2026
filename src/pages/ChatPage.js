@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { getChatMessages, sendChatMessage, subscribeToChat } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
+import { syncLiveScoreDetails } from '../services/syncScores';
 import './ChatPage.css';
 
 const EMOJIS = [
@@ -107,6 +108,16 @@ const statusLabel = (status, elapsed) => {
   return null;
 };
 
+const calcMatchClock = (dateStr) => {
+  const diffMin = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
+  if (diffMin < 0) return '';
+  if (diffMin <= 45) return `${Math.max(1, diffMin)}'`;
+  if (diffMin <= 60) return 'INTERVALO';
+  const gameMin = diffMin - 15;
+  if (gameMin <= 90) return `${gameMin}'`;
+  return `90+${gameMin - 90}'`;
+};
+
 // ── Figurinhas ───────────────────────────────────────────────
 const STICKERS = [
   { key: 'mascote',      label: '🕺 Homem festejando'   },
@@ -134,6 +145,7 @@ export default function ChatPage() {
   const [avatarViewer, setAvatarViewer] = useState({ open: false, src: null, name: '', color: '' });
   const [liveMatches, setLiveMatches] = useState([]);
   const [liveElapsed, setLiveElapsed] = useState({});
+  const [liveMeta, setLiveMeta] = useState({});
   const [nextMatch, setNextMatch]     = useState(null);
   const [countdown, setCountdown]     = useState('');
   const bottomRef      = useRef(null);
@@ -265,15 +277,27 @@ export default function ChatPage() {
   // ── Jogos ao vivo ────────────────────────────────────────────────────────
   useEffect(() => {
     const fetchLive = async () => {
+      let meta = {};
+      try {
+        const details = await syncLiveScoreDetails(supabase);
+        meta = details.reduce((acc, item) => {
+          acc[item.id] = item;
+          return acc;
+        }, {});
+      } catch (e) {
+        console.error('[ChatLiveSync] erro:', e.message);
+      }
+
       const now = new Date().toISOString();
       const cutoff = new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString();
       const { data } = await supabase
         .from('matches')
-        .select('id, team_a, team_b, team_a_flag, team_b_flag, score_a, score_b, match_status, elapsed_time')
+        .select('id, team_a, team_b, team_a_flag, team_b_flag, match_date, score_a, score_b, match_status, elapsed_time')
         .eq('is_finished', false)
         .gte('match_date', cutoff)
         .lte('match_date', now);
       const matches = data || [];
+      setLiveMeta(meta);
       setLiveMatches(matches);
       // Sincroniza o timer local com o valor real do banco (só se o banco estiver à frente)
       setLiveElapsed(prev => {
@@ -287,7 +311,7 @@ export default function ChatPage() {
       });
     };
     fetchLive();
-    const t = setInterval(fetchLive, 30_000);
+    const t = setInterval(fetchLive, 60_000);
     return () => clearInterval(t);
   }, []);
 
@@ -433,19 +457,26 @@ export default function ChatPage() {
       {liveMatches.length > 0 && (
         <div className="live-banner">
           {liveMatches.map(m => {
-            const st = statusLabel(m.match_status, liveElapsed[m.id] ?? m.elapsed_time);
+            const meta = liveMeta[m.id];
+            const apiPaused = meta?.status === 'HALFTIME';
+            const dbStatus = apiPaused ? 'HT' : m.match_status;
+            const st = statusLabel(dbStatus, liveElapsed[m.id] ?? m.elapsed_time);
             const isPaused = st?.paused ?? false;
-            const label = st?.text || 'AO VIVO';
+            const clock = meta?.minute || st?.text || calcMatchClock(m.match_date);
+            const label = isPaused || clock === 'INTERVALO' ? 'INTERVALO' : 'AO VIVO';
             return (
               <div key={m.id} className={`live-banner-match${isPaused ? ' live-banner-paused' : ''}`}>
                 <span className={`live-dot${isPaused ? ' live-dot-paused' : ''}`}>{isPaused ? '⏸️' : '🔴'}</span>
                 <span className="live-label">{label}</span>
+                <span className={`live-clock ${isPaused || clock === 'INTERVALO' ? 'halftime' : ''}`}>
+                  {clock}
+                </span>
                 <div className="live-match-teams">
                   {flagUrl(m.team_a_flag)
                     ? <img className="live-flag" src={flagUrl(m.team_a_flag)} alt={m.team_a} />
                     : <span>{m.team_a_flag}</span>}
                   <span className="live-team-name">{m.team_a}</span>
-                  <span className="live-score">{m.score_a ?? 0} × {m.score_b ?? 0}</span>
+                  <span className="live-score">{meta?.scoreA ?? m.score_a ?? 0} × {meta?.scoreB ?? m.score_b ?? 0}</span>
                   <span className="live-team-name">{m.team_b}</span>
                   {flagUrl(m.team_b_flag)
                     ? <img className="live-flag" src={flagUrl(m.team_b_flag)} alt={m.team_b} />
