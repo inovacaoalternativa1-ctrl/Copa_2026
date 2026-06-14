@@ -42,6 +42,12 @@ const DB_TO_API = {
   'Haiti':'Haiti','Panamá':'Panama','Honduras':'Honduras','Jamaica':'Jamaica',
   'Guatemala':'Guatemala','El Salvador':'El Salvador',
 };
+const norm = s => (s || '').normalize('NFC').trim();
+
+// Reverse lookup: API English name → Portuguese DB name (usado por autoValidateExtras e espnFindAndFetchEvents)
+const API_TO_DB_BASE = Object.fromEntries(Object.entries(DB_TO_API).map(([db, en]) => [en, db]));
+const resolveToDb = name => API_TO_DB_BASE[norm(name)] || name;
+
 const yn = cond => ({ answer: cond ? 'yes' : 'no' });
 
 const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB) => {
@@ -96,53 +102,61 @@ const ESPN_ABBR_TO_NAME = {
 };
 
 // Busca eventos via ESPN summary (fallback quando API-Football não retorna eventos)
+const ESPN_LEAGUES_FALLBACK = [
+  'fifa.worldcup', 'intl-friendlies', 'concacaf.nations.league', 'uefa.nations', 'all',
+];
+
 const espnFindAndFetchEvents = async (matchDate, nameA, nameB) => {
   const date = matchDate.split('T')[0];
-  const yesterday = new Date(new Date(date).getTime() - 86400000).toISOString().split('T')[0];
-  // Se o jogo passou de 100 min há, considera encerrado mesmo sem status "completed"
-  const minSinceKickoff = (Date.now() - new Date(matchDate).getTime()) / 60000;
-  for (const d of [date, yesterday]) {
-    try {
-      const espnScoreboardUrl = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldcup/scoreboard?dates=${d.replace(/-/g,'')}`;
-      const rs = await fetch(espnScoreboardUrl);
-      if (!rs.ok) continue;
-      const data = await rs.json();
-      for (const ev of (data.events || [])) {
-        const comp = ev.competitions?.[0];
-        if (!comp) continue;
-        // Pula só se ainda em andamento E menos de 100 min do kick-off
-        if (!comp.status?.type?.completed && minSinceKickoff < 100) continue;
-        const homeC = comp.competitors?.find(c => c.homeAway === 'home');
-        const awayC = comp.competitors?.find(c => c.homeAway === 'away');
-        if (!homeC || !awayC) continue;
-        const h    = homeC.team.displayName, a = awayC.team.displayName;
-        const hAlt = ESPN_ABBR_TO_NAME[homeC.team.abbreviation] || h;
-        const aAlt = ESPN_ABBR_TO_NAME[awayC.team.abbreviation] || a;
-        const nm = (x,y) => (x===nameA&&y===nameB)||(x===nameB&&y===nameA);
-        if (!nm(h,a) && !nm(hAlt,aAlt)) continue;
-        const homeIsTeamA = nm(h,a) ? (h===nameA) : (hAlt===nameA);
-        const homeTeamId  = homeC.team.id;
-        const awayTeamId  = awayC.team.id;
-        const sum = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.worldcup/summary?event=${ev.id}`);
-        if (!sum.ok) return null;
-        const sd = await sum.json();
-        const events = [];
-        for (const play of (sd.plays || [])) {
-          const tt = (play.type?.text || '').toLowerCase();
-          const tid = play.team?.id || null;
-          const el  = play.clock?.value ? Math.ceil(play.clock.value / 60) : 45;
-          if (play.scoringPlay || tt.includes('goal')) {
-            events.push({ type:'Goal', detail: tt.includes('own')?'Own Goal':tt.includes('pen')?'Penalty':'Normal Goal', team:{id:tid}, time:{elapsed:el,extra:null} });
-          } else if (tt.includes('red')) {
-            events.push({ type:'Card', detail: tt.includes('yellow')?'Yellow Red Card':'Red Card', team:{id:tid}, time:{elapsed:el,extra:null} });
-          } else if (tt.includes('yellow')||tt.includes('caution')||tt.includes('booking')) {
-            events.push({ type:'Card', detail:'Yellow Card', team:{id:tid}, time:{elapsed:el,extra:null} });
+  const matchDateMs = new Date(matchDate).getTime();
+  const minSinceKickoff = (Date.now() - matchDateMs) / 60000;
+  // Checa data do jogo + 1 dia antes e depois (margem de fuso horário)
+  const days = [0, -1, 1, -2].map(offset => {
+    const d = new Date(matchDateMs + offset * 86400000);
+    return d.toISOString().split('T')[0].replace(/-/g, '');
+  });
+  for (const league of ESPN_LEAGUES_FALLBACK) {
+    for (const ds of days) {
+      try {
+        const rs = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?dates=${ds}`);
+        if (!rs.ok) continue;
+        const data = await rs.json();
+        for (const ev of (data.events || [])) {
+          const comp = ev.competitions?.[0];
+          if (!comp) continue;
+          if (!comp.status?.type?.completed && minSinceKickoff < 100) continue;
+          const homeC = comp.competitors?.find(c => c.homeAway === 'home');
+          const awayC = comp.competitors?.find(c => c.homeAway === 'away');
+          if (!homeC || !awayC) continue;
+          const h    = homeC.team.displayName, a = awayC.team.displayName;
+          const hAlt = ESPN_ABBR_TO_NAME[homeC.team.abbreviation] || h;
+          const aAlt = ESPN_ABBR_TO_NAME[awayC.team.abbreviation] || a;
+          const nm = (x,y) => (x===nameA&&y===nameB)||(x===nameB&&y===nameA);
+          if (!nm(h,a) && !nm(hAlt,aAlt)) continue;
+          const homeIsTeamA = nm(h,a) ? (h===nameA) : (hAlt===nameA);
+          const homeTeamId  = homeC.team.id;
+          const awayTeamId  = awayC.team.id;
+          const sum = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/summary?event=${ev.id}`);
+          if (!sum.ok) return null;
+          const sd = await sum.json();
+          const events = [];
+          for (const play of (sd.plays || [])) {
+            const tt = (play.type?.text || '').toLowerCase();
+            const tid = play.team?.id || null;
+            const el  = play.clock?.value ? Math.ceil(play.clock.value / 60) : 45;
+            if (play.scoringPlay || tt.includes('goal')) {
+              events.push({ type:'Goal', detail: tt.includes('own')?'Own Goal':tt.includes('pen')?'Penalty':'Normal Goal', team:{id:tid}, time:{elapsed:el,extra:null} });
+            } else if (tt.includes('red')) {
+              events.push({ type:'Card', detail: tt.includes('yellow')?'Yellow Red Card':'Red Card', team:{id:tid}, time:{elapsed:el,extra:null} });
+            } else if (tt.includes('yellow')||tt.includes('caution')||tt.includes('booking')) {
+              events.push({ type:'Card', detail:'Yellow Card', team:{id:tid}, time:{elapsed:el,extra:null} });
+            }
           }
+          console.log(`[sync-scores] ESPN events para ${nameA} vs ${nameB}: ${events.length} (liga=${league})`);
+          return { events, homeIsTeamA, homeTeamId, awayTeamId };
         }
-        console.log(`[sync-scores] ESPN events para ${nameA} vs ${nameB}: ${events.length}`);
-        return { events, homeIsTeamA, homeTeamId, awayTeamId };
-      }
-    } catch(e) { console.warn('[sync-scores] ESPN events erro:', e.message); }
+      } catch(e) { console.warn('[sync-scores] ESPN events erro:', e.message); }
+    }
   }
   return null;
 };
@@ -206,11 +220,11 @@ const autoValidateExtras = async (supabase, match, scoreA, scoreB, afFixtureId) 
               const fixture = (await fxRes.json()).response?.find(f => {
                 const h=f.teams.home.name, a=f.teams.away.name;
                 return (h===nameA&&a===nameB)||(h===nameB&&a===nameA)||
-                       (norm(resolveTeam(h))===norm(match.team_a)&&norm(resolveTeam(a))===norm(match.team_b))||
-                       (norm(resolveTeam(h))===norm(match.team_b)&&norm(resolveTeam(a))===norm(match.team_a));
+                       (resolveToDb(h)===match.team_a&&resolveToDb(a)===match.team_b)||
+                       (resolveToDb(h)===match.team_b&&resolveToDb(a)===match.team_a);
               });
               if (fixture) {
-                homeIsTeamA = fixture.teams.home.name === nameA || resolveTeam(fixture.teams.home.name) === match.team_a;
+                homeIsTeamA = fixture.teams.home.name === nameA || resolveToDb(fixture.teams.home.name) === match.team_a;
                 homeTeamId  = fixture.teams.home.id;
                 awayTeamId  = fixture.teams.away.id;
                 status      = fixture.fixture.status.short;
@@ -261,31 +275,21 @@ exports.handler = async () => {
     process.env.VAPID_PRIVATE_KEY
   );
 
-  // Busca jogos ainda não encerrados
   const { data: matches } = await supabase.from('matches').select('*').eq('is_finished', false);
   if (!matches?.length) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo pendente' }) };
 
-  // Filtra apenas jogos que já começaram (ou começam em até 30 min) — sem limite máximo
   const now = Date.now();
-  const activeMatches = matches.filter(m => {
-    const diff = (now - new Date(m.match_date).getTime()) / 60000;
-    return diff >= -30; // já começou ou começa em breve
-  });
+  const activeMatches = matches.filter(m => (now - new Date(m.match_date).getTime()) / 60000 >= -30);
   if (!activeMatches.length) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo iniciado ainda' }) };
 
-  // ── API-Football: fixtures ao vivo na Copa 2026 ──────────────────────────
   const AF_KEY = process.env.REACT_APP_API_FOOTBALL_KEY;
   if (!AF_KEY) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'REACT_APP_API_FOOTBALL_KEY não configurada' }) };
 
-  // Mapeamento reverso: nome em inglês → nome no banco
-  const norm = s => (s || '').normalize('NFC').trim();
+  // API_TO_DB: English → Portuguese, com SAFE_OVERRIDES sobrescrevendo
   const API_TO_DB = Object.fromEntries(
     Object.entries(DB_TO_API).map(([db, en]) => [norm(en), norm(db)])
   );
 
-  // Mapeamento com Unicode-escapes nos valores — imune a encoding do arquivo
-  // í=í  ç=ç  é=é  á=á  Á=Á  ó=ó
-  // ô=ô  ã=ã  â=â  õ=õ  í=í
   const SAFE_OVERRIDES = {
     'Switzerland':            'Suíça',
     'France':                 'França',
@@ -331,6 +335,22 @@ exports.handler = async () => {
     'Netherlands':            'Holanda',
     'Holland':                'Holanda',
     'Cape Verde':             'Cabo Verde',
+    'Türkiye':           'Turquia',
+    'Turkiye':                'Turquia',
+    'Turkey':                 'Turquia',
+    'Ecuador':                'Equador',
+    'Paraguay':               'Paraguai',
+    'Uruguay':                'Uruguai',
+    'Colombia':               'Colômbia',
+    'Venezuela':              'Venezuela',
+    'Chile':                  'Chile',
+    'Peru':                   'Peru',
+    'Ghana':                  'Gana',
+    'Egypt':                  'Egito',
+    'Morocco':                'Marrocos',
+    'Senegal':                'Senegal',
+    'Iraq':                   'Iraque',
+    'Qatar':                  'Catar',
   };
   // SAFE_OVERRIDES tem prioridade — usa Unicode escapes para evitar problema de encoding
   Object.assign(API_TO_DB, SAFE_OVERRIDES);
@@ -342,122 +362,175 @@ exports.handler = async () => {
   const COMPLETED = new Set(['FT','AET','PEN']);
   const LIVE      = new Set(['1H','HT','2H','ET','BT','P','LIVE']);
 
-  let fixtures = [];
+  // Rastreia fixtures por match ID — cada etapa só processa jogos ainda não encontrados
+  const fixtureByMatchId = new Map();
+
+  const findActiveMatch = (homeName, awayName) => {
+    const h = resolveTeam(homeName), a = resolveTeam(awayName);
+    return activeMatches.find(m =>
+      (norm(m.team_a)===h && norm(m.team_b)===a) ||
+      (norm(m.team_a)===a && norm(m.team_b)===h)
+    );
+  };
+
+  const registerFixture = (fixture, homeName, awayName) => {
+    const m = findActiveMatch(homeName, awayName);
+    if (m && !fixtureByMatchId.has(m.id)) {
+      fixtureByMatchId.set(m.id, fixture);
+      return true;
+    }
+    return false;
+  };
+
+  const unmatched = () => activeMatches.filter(m => !fixtureByMatchId.has(m.id));
+
+  // ── Etapa 1: API-Football fixtures?live=all ──────────────────────────────────
   try {
-    // Busca TODOS os jogos ao vivo (sem filtro de liga — plano free não suporta histórico)
     const liveRes = await fetch(
       'https://v3.football.api-sports.io/fixtures?live=all',
       { headers: { 'x-apisports-key': AF_KEY } }
     );
     if (liveRes.ok) {
-      const liveData = await liveRes.json();
-      // Filtra só jogos que batem com algum time do banco
-      const allLive = liveData.response || [];
-      fixtures = allLive.filter(f => {
-        const h = resolveTeam(f.teams.home.name);
-        const a = resolveTeam(f.teams.away.name);
-        return activeMatches.some(m =>
-          (norm(m.team_a) === h && norm(m.team_b) === a) ||
-          (norm(m.team_a) === a && norm(m.team_b) === h)
-        );
-      }).map(f => ({ ...f, _afId: f.fixture.id }));
+      for (const f of (await liveRes.json()).response || []) {
+        registerFixture({ ...f, _afId: f.fixture.id }, f.teams.home.name, f.teams.away.name);
+      }
     }
+    console.log(`[sync] Etapa 1 (AF live): ${fixtureByMatchId.size}/${activeMatches.length} jogos encontrados`);
+  } catch(e) { console.warn('[sync] Etapa 1 erro:', e.message); }
 
-    // Fallback 1: API-Football por data sem filtro de liga
-    if (!fixtures.length) {
+  // ── Etapa 2: API-Football por data (jogos encerrados hoje/ontem) ─────────────
+  if (unmatched().length) {
+    try {
       const today     = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
       const [r1, r2] = await Promise.all([
         fetch(`https://v3.football.api-sports.io/fixtures?date=${today}`,     { headers: { 'x-apisports-key': AF_KEY } }),
         fetch(`https://v3.football.api-sports.io/fixtures?date=${yesterday}`, { headers: { 'x-apisports-key': AF_KEY } }),
       ]);
-      const d1 = r1.ok ? ((await r1.json()).response || []) : [];
-      const d2 = r2.ok ? ((await r2.json()).response || []) : [];
+      const d1 = r1.ok ? (await r1.json()).response || [] : [];
+      const d2 = r2.ok ? (await r2.json()).response || [] : [];
       const seen = new Set();
-      fixtures = [...d1, ...d2].filter(f => {
-        if (seen.has(f.fixture.id)) return false;
+      for (const f of [...d1, ...d2]) {
+        if (seen.has(f.fixture.id)) continue;
         seen.add(f.fixture.id);
-        if (!COMPLETED.has(f.fixture.status.short)) return false;
-        const h = resolveTeam(f.teams.home.name);
-        const a = resolveTeam(f.teams.away.name);
-        return activeMatches.some(m =>
-          (norm(m.team_a) === h && norm(m.team_b) === a) ||
-          (norm(m.team_a) === a && norm(m.team_b) === h)
-        );
-      }).map(f => ({ ...f, _afId: f.fixture.id }));
-      console.log(`[sync-scores] AF fallback: today=${d1.length} yesterday=${d2.length} match=${fixtures.length}`);
-    }
+        if (!COMPLETED.has(f.fixture.status.short)) continue;
+        registerFixture({ ...f, _afId: f.fixture.id }, f.teams.home.name, f.teams.away.name);
+      }
+      console.log(`[sync] Etapa 2 (AF data): ${fixtureByMatchId.size}/${activeMatches.length} jogos encontrados`);
+    } catch(e) { console.warn('[sync] Etapa 2 erro:', e.message); }
+  }
 
-    // Fallback 2: football-data.org — retorna histórico completo da Copa (plano free)
-    const FD_KEY = process.env.FOOTBALL_DATA_KEY;
-    if (!fixtures.length && FD_KEY) {
-      try {
-        const fdRes = await fetch(
-          'https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED',
-          { headers: { 'X-Auth-Token': FD_KEY } }
-        );
-        if (fdRes.ok) {
-          const fdData = await fdRes.json();
-          const fdMatches = (fdData.matches || []).filter(m => {
-            const h = resolveTeam(m.homeTeam.name);
-            const a = resolveTeam(m.awayTeam.name);
-            return activeMatches.some(am =>
-              (norm(am.team_a) === h && norm(am.team_b) === a) ||
-              (norm(am.team_a) === a && norm(am.team_b) === h)
-            );
-          });
-          // Converte para o formato do API-Football para o restante do código funcionar igual
-          fixtures = fdMatches.map(m => ({
+  // ── Etapa 3: football-data.org (Copa encerrada, plano free) ─────────────────
+  const FD_KEY = process.env.FOOTBALL_DATA_KEY;
+  if (unmatched().length && FD_KEY) {
+    try {
+      const fdRes = await fetch(
+        'https://api.football-data.org/v4/competitions/WC/matches?status=FINISHED',
+        { headers: { 'X-Auth-Token': FD_KEY } }
+      );
+      if (fdRes.ok) {
+        for (const m of (await fdRes.json()).matches || []) {
+          registerFixture({
             fixture: { id: m.id, status: { short: 'FT', elapsed: 90 } },
             teams:   { home: { name: m.homeTeam.name, id: m.homeTeam.id }, away: { name: m.awayTeam.name, id: m.awayTeam.id } },
             goals:   { home: m.score.fullTime.home, away: m.score.fullTime.away },
-          }));
-          console.log(`[sync-scores] football-data.org: ${fdMatches.length} jogo(s) encerrado(s) encontrado(s)`);
+          }, m.homeTeam.name, m.awayTeam.name);
         }
-      } catch(e) {
-        console.error('[sync-scores] football-data.org erro:', e.message);
+        console.log(`[sync] Etapa 3 (FD.org): ${fixtureByMatchId.size}/${activeMatches.length} jogos encontrados`);
       }
-    }
+    } catch(e) { console.error('[sync] Etapa 3 erro:', e.message); }
+  }
 
-    // Fallback 3: ESPN public scoreboard (sem chave, retorna jogos encerrados)
-    if (!fixtures.length) {
-      try {
-        const fmt = d => d.toISOString().split('T')[0].replace(/-/g, '');
-        for (const ds of [fmt(new Date()), fmt(new Date(Date.now() - 86400000))]) {
-          const r = await fetch(`${ESPN_URL}?dates=${ds}`);
+  // ── Etapa 4: ESPN scoreboard — ao vivo E encerrado, múltiplas ligas e datas ──
+  // Roda para jogos ainda não encontrados (ESPN cobre ao vivo também, não apenas FT)
+  if (unmatched().length) {
+    const fmt  = d => d.toISOString().split('T')[0].replace(/-/g, '');
+    const days = [fmt(new Date()), fmt(new Date(Date.now()-86400000)), fmt(new Date(Date.now()-172800000)), fmt(new Date(Date.now()-259200000))];
+    const espnLeagues = ['fifa.worldcup','intl-friendlies','concacaf.nations.league','uefa.nations','all'];
+    const espnStatusMap = {
+      STATUS_FIRST_HALF:'1H', STATUS_HALFTIME:'HT', STATUS_SECOND_HALF:'2H',
+      STATUS_EXTRA_TIME:'ET', STATUS_FINAL:'FT', STATUS_FULL_TIME:'FT',
+      STATUS_OVERTIME:'ET', STATUS_SHOOTOUT:'P',
+    };
+    try {
+      outerESPN: for (const league of espnLeagues) {
+        for (const ds of days) {
+          if (!unmatched().length) break outerESPN;
+          const r = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?dates=${ds}`);
           if (!r.ok) continue;
           const data = await r.json();
           for (const ev of (data.events || [])) {
             const comp = ev.competitions?.[0];
-            if (!comp?.status?.type?.completed) continue;
-            const homeC = comp.competitors?.find(c => c.homeAway === 'home');
-            const awayC = comp.competitors?.find(c => c.homeAway === 'away');
+            if (!comp) continue;
+            const st = comp.status?.type;
+            const isLiveEspn      = st?.state === 'in';
+            const isCompletedEspn = st?.completed === true;
+            if (!isLiveEspn && !isCompletedEspn) continue;
+            const homeC = comp.competitors?.find(c => c.homeAway==='home');
+            const awayC = comp.competitors?.find(c => c.homeAway==='away');
             if (!homeC || !awayC) continue;
-            const h = resolveTeam(homeC.team.displayName);
-            const a = resolveTeam(awayC.team.displayName);
-            if (!activeMatches.some(m =>
-              (norm(m.team_a) === h && norm(m.team_b) === a) ||
-              (norm(m.team_a) === a && norm(m.team_b) === h)
-            )) continue;
-            fixtures.push({
-              fixture: { id: null, status: { short: 'FT', elapsed: 90 } },
-              teams:   { home: { name: homeC.team.displayName, id: null }, away: { name: awayC.team.displayName, id: null } },
-              goals:   { home: parseInt(homeC.score || 0), away: parseInt(awayC.score || 0) },
+            const h    = homeC.team.displayName;
+            const a    = awayC.team.displayName;
+            const hAlt = ESPN_ABBR_TO_NAME[homeC.team.abbreviation] || h;
+            const aAlt = ESPN_ABBR_TO_NAME[awayC.team.abbreviation] || a;
+            // Tenta match pelo displayName ou pela abreviação traduzida
+            const am = findActiveMatch(h, a) || findActiveMatch(hAlt, aAlt);
+            if (!am || fixtureByMatchId.has(am.id)) continue;
+            const period   = comp.status?.period || 1;
+            const clockMin = parseInt(comp.status?.displayClock?.split(':')[0]) || 0;
+            const espnSt   = isCompletedEspn ? 'FT' : (espnStatusMap[st?.name] || (period===1?'1H':'2H'));
+            const elapsed  = isCompletedEspn ? 90 : (clockMin || (period===1?45:90));
+            fixtureByMatchId.set(am.id, {
+              fixture: { id: null, status: { short: espnSt, elapsed } },
+              teams:   { home: { name: hAlt, id: homeC.team.id }, away: { name: aAlt, id: awayC.team.id } },
+              goals:   { home: parseInt(homeC.score||0), away: parseInt(awayC.score||0) },
+              _espnLeague: league,
             });
+            console.log(`[sync] Etapa 4 (ESPN/${league}): ${am.team_a} vs ${am.team_b} status=${espnSt} ${parseInt(homeC.score||0)}×${parseInt(awayC.score||0)}`);
           }
-          if (fixtures.length) { console.log(`[sync-scores] ESPN fallback: ${fixtures.length} jogo(s)`); break; }
         }
-      } catch(e) {
-        console.error('[sync-scores] ESPN fallback erro:', e.message);
       }
-    }
-  } catch(e) {
-    return { statusCode: 500, body: JSON.stringify({ updated: 0, matches: [], body: `API-Football erro: ${e.message}` }) };
+    } catch(e) { console.error('[sync] Etapa 4 erro:', e.message); }
   }
+
+  // ── Etapa 5: AF team/last10 (jogos > 90 min que ainda não foram encontrados) ──
+  const lateUnmatched = unmatched().filter(m => (now - new Date(m.match_date).getTime())/60000 >= 90);
+  for (const am of lateUnmatched.slice(0, 4)) {
+    const nameA = DB_TO_API[am.team_a] || am.team_a;
+    try {
+      const tr = await fetch(
+        `https://v3.football.api-sports.io/teams?name=${encodeURIComponent(nameA)}`,
+        { headers: { 'x-apisports-key': AF_KEY } }
+      );
+      if (!tr.ok) continue;
+      const teamId = (await tr.json()).response?.[0]?.team?.id;
+      if (!teamId) continue;
+      const fr = await fetch(
+        `https://v3.football.api-sports.io/fixtures?team=${teamId}&last=10`,
+        { headers: { 'x-apisports-key': AF_KEY } }
+      );
+      if (!fr.ok) continue;
+      const matchDate = am.match_date.split('T')[0];
+      const fx = (await fr.json()).response?.find(f => {
+        if (!COMPLETED.has(f.fixture.status.short)) return false;
+        const fxDate = f.fixture.date?.split('T')[0] || '';
+        if (Math.abs((new Date(fxDate)-new Date(matchDate))/86400000) > 2) return false;
+        const h = resolveTeam(f.teams.home.name), a = resolveTeam(f.teams.away.name);
+        return (norm(am.team_a)===h&&norm(am.team_b)===a)||(norm(am.team_a)===a&&norm(am.team_b)===h);
+      });
+      if (fx) {
+        fixtureByMatchId.set(am.id, { ...fx, _afId: fx.fixture.id });
+        console.log(`[sync] Etapa 5 (AF team/last10): ${am.team_a} vs ${am.team_b} → fixture ${fx.fixture.id}`);
+      }
+    } catch(e) { console.warn('[sync] Etapa 5 erro:', e.message); }
+  }
+
+  const fixtures = [...fixtureByMatchId.values()];
+  console.log(`[sync] Total encontrado: ${fixtures.length}/${activeMatches.length} jogos ativos`);
 
   if (!fixtures.length) {
     const pendingNames = activeMatches.map(m => `${m.team_a} × ${m.team_b}`).join(', ');
-    return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: `API-Football não retornou jogos. Pendentes no banco: ${pendingNames}` }) };
+    return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: `Nenhuma API retornou jogos. Pendentes: ${pendingNames}` }) };
   }
 
   const { data: subs } = await supabase.from('push_subscriptions').select('id, endpoint, p256dh, auth');
