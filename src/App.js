@@ -13,6 +13,7 @@ import AdminPage from './pages/AdminPage';
 import NewsPage from './pages/NewsPage';
 import PartnersPage from './pages/PartnersPage';
 import QuizPage from './pages/QuizPage';
+import PrizesPage from './pages/PrizesPage';
 import './App.css';
 
 const Private = ({ children }) => {
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="noticias" element={<NewsPage />} />
             <Route path="quiz" element={<QuizPage />} />
             <Route path="parceiros" element={<PartnersPage />} />
+            <Route path="premios" element={<PrizesPage />} />
             <Route path="admin" element={<Admin><AdminPage /></Admin>} />
           </Route>
         </Routes>
