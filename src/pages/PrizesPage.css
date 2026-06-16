@@ -50,71 +50,73 @@
   border: 2px solid transparent;
   box-shadow: 0 4px 24px rgba(6, 44, 100, 0.09);
   background: #fff;
-  transition: transform 0.25s, box-shadow 0.35s, border-color 0.35s;
+  transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
   overflow: hidden;
+  cursor: default;
 }
 
-/* Varredura de luz */
+/* Varredura com as cores do Brasil */
 .prize-card::before {
   content: '';
   position: absolute;
-  top: -60%;
-  left: -80%;
-  width: 55%;
-  height: 220%;
+  top: -50%;
+  left: -110%;
+  width: 65%;
+  height: 200%;
   background: linear-gradient(
-    105deg,
-    transparent 30%,
-    rgba(255, 255, 255, 0.55) 50%,
-    transparent 70%
+    108deg,
+    transparent 16%,
+    rgba(0, 156, 59, 0.30) 30%,
+    rgba(255, 223, 0, 0.50) 50%,
+    rgba(0, 39, 118, 0.30) 70%,
+    transparent 84%
   );
-  transform: skewX(-15deg) translateX(0);
+  transform: skewX(-12deg);
   opacity: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
 }
 
 .prize-card:hover::before {
-  animation: shine-sweep 0.65s ease forwards;
+  animation: pz-br-sweep 0.9s ease-out forwards;
 }
 
-@keyframes shine-sweep {
-  0%   { opacity: 0; transform: skewX(-15deg) translateX(0); }
+@keyframes pz-br-sweep {
+  0%   { opacity: 0;   transform: skewX(-12deg) translateX(0%); }
   10%  { opacity: 1; }
-  90%  { opacity: 1; }
-  100% { opacity: 0; transform: skewX(-15deg) translateX(430%); }
+  88%  { opacity: 0.9; transform: skewX(-12deg) translateX(295%); }
+  100% { opacity: 0;   transform: skewX(-12deg) translateX(315%); }
 }
 
+/* Hover: lift + glow pulsante nas cores do Brasil */
 .prize-card:hover {
-  transform: translateY(-4px) scale(1.012);
+  transform: translateY(-6px) scale(1.018);
+  animation: pz-br-glow 1.8s ease-in-out infinite;
 }
 
-/* Brilho dourado */
-.prize-card--gold:hover {
-  border-color: #f5c518;
-  box-shadow:
-    0 0 0 3px rgba(245, 197, 24, 0.35),
-    0 0 28px 6px rgba(255, 200, 0, 0.40),
-    0 12px 40px rgba(6, 44, 100, 0.18);
-}
-
-/* Brilho prateado */
-.prize-card--silver:hover {
-  border-color: #b8b8b8;
-  box-shadow:
-    0 0 0 3px rgba(192, 192, 192, 0.45),
-    0 0 28px 6px rgba(210, 210, 210, 0.45),
-    0 12px 40px rgba(6, 44, 100, 0.18);
-}
-
-/* Brilho bronze */
-.prize-card--bronze:hover {
-  border-color: #cd7f32;
-  box-shadow:
-    0 0 0 3px rgba(205, 127, 50, 0.40),
-    0 0 28px 6px rgba(205, 127, 50, 0.38),
-    0 12px 40px rgba(6, 44, 100, 0.18);
+@keyframes pz-br-glow {
+  0%, 100% {
+    border-color: #009C3B;
+    box-shadow:
+      0 0 0 3px rgba(0, 156, 59, 0.50),
+      0 0 36px 10px rgba(0, 156, 59, 0.40),
+      0 16px 48px rgba(0, 80, 0, 0.22);
+  }
+  33% {
+    border-color: #FFDF00;
+    box-shadow:
+      0 0 0 3px rgba(255, 223, 0, 0.60),
+      0 0 42px 14px rgba(255, 223, 0, 0.52),
+      0 16px 48px rgba(140, 100, 0, 0.22);
+  }
+  66% {
+    border-color: #002776;
+    box-shadow:
+      0 0 0 3px rgba(0, 39, 118, 0.52),
+      0 0 36px 10px rgba(0, 39, 118, 0.44),
+      0 16px 48px rgba(0, 0, 80, 0.22);
+  }
 }
 
 /* Gold */
@@ -123,9 +125,7 @@
   background: linear-gradient(135deg, #fffdf0 0%, #fff8d6 100%);
 }
 
-.prize-card--gold .prize-card__label {
-  color: #b8860b;
-}
+.prize-card--gold .prize-card__label { color: #b8860b; }
 
 /* Silver */
 .prize-card--silver {
@@ -133,9 +133,7 @@
   background: linear-gradient(135deg, #f8f8f8 0%, #efefef 100%);
 }
 
-.prize-card--silver .prize-card__label {
-  color: #6b6b6b;
-}
+.prize-card--silver .prize-card__label { color: #6b6b6b; }
 
 /* Bronze */
 .prize-card--bronze {
@@ -143,8 +141,30 @@
   background: linear-gradient(135deg, #fff9f5 0%, #fdeede 100%);
 }
 
-.prize-card--bronze .prize-card__label {
-  color: #8b4513;
+.prize-card--bronze .prize-card__label { color: #8b4513; }
+
+/* ── Partículas ── */
+.pz-spark {
+  position: absolute;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes pz-spark-fly {
+  0%   { opacity: 1; transform: rotate(var(--ang)) translateX(0)           scale(1); }
+  100% { opacity: 0; transform: rotate(var(--ang)) translateX(var(--dist)) scale(0.05); }
+}
+
+.pz-confetti {
+  position: absolute;
+  top: -8px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+@keyframes pz-fall {
+  0%   { opacity: 1;   transform: translateY(0)     translateX(0)            rotate(0deg); }
+  100% { opacity: 0.1; transform: translateY(170px) translateX(var(--drift)) rotate(var(--rot)); }
 }
 
 /* ── Card Header ── */
@@ -197,6 +217,7 @@
   align-items: center;
   justify-content: center;
   border: 1.5px solid rgba(0,0,0,0.06);
+  cursor: zoom-in;
 }
 
 .prize-card__item-img {
@@ -296,45 +317,22 @@
   text-shadow: 0 1px 4px rgba(0,0,0,0.5);
 }
 
-.prize-card__item-img-wrap {
-  cursor: zoom-in;
-}
-
 /* ── Mobile ── */
 @media (max-width: 600px) {
-  .prizes-hero {
-    padding: 28px 16px 24px;
-  }
-
-  .prizes-trophy {
-    font-size: 52px;
-  }
-
-  .prizes-title {
-    font-size: 40px;
-  }
-
-  .prizes-subtitle {
-    font-size: 14px;
-  }
+  .prizes-hero { padding: 28px 16px 24px; }
+  .prizes-trophy { font-size: 52px; }
+  .prizes-title { font-size: 40px; }
+  .prizes-subtitle { font-size: 14px; }
 
   .prize-card {
     padding: 20px 18px 18px;
     border-radius: 16px;
   }
 
-  .prize-card__medal {
-    font-size: 36px;
-  }
+  .prize-card__medal { font-size: 36px; }
+  .prize-card__label { font-size: 26px; }
 
-  .prize-card__label {
-    font-size: 26px;
-  }
-
-  .prize-card__item {
-    gap: 12px;
-    padding: 8px 10px;
-  }
+  .prize-card__item { gap: 12px; padding: 8px 10px; }
 
   .prize-card__item-img-wrap {
     width: 64px;
@@ -342,11 +340,6 @@
     border-radius: 10px;
   }
 
-  .prize-card__item-icon {
-    font-size: 32px;
-  }
-
-  .prize-card__item-text {
-    font-size: 13px;
-  }
+  .prize-card__item-icon { font-size: 32px; }
+  .prize-card__item-text { font-size: 13px; }
 }
