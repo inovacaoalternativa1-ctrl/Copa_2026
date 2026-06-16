@@ -50,12 +50,71 @@
   border: 2px solid transparent;
   box-shadow: 0 4px 24px rgba(6, 44, 100, 0.09);
   background: #fff;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.25s, box-shadow 0.35s, border-color 0.35s;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Varredura de luz */
+.prize-card::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -80%;
+  width: 55%;
+  height: 220%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 70%
+  );
+  transform: skewX(-15deg) translateX(0);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.prize-card:hover::before {
+  animation: shine-sweep 0.65s ease forwards;
+}
+
+@keyframes shine-sweep {
+  0%   { opacity: 0; transform: skewX(-15deg) translateX(0); }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { opacity: 0; transform: skewX(-15deg) translateX(430%); }
 }
 
 .prize-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 36px rgba(6, 44, 100, 0.15);
+  transform: translateY(-4px) scale(1.012);
+}
+
+/* Brilho dourado */
+.prize-card--gold:hover {
+  border-color: #f5c518;
+  box-shadow:
+    0 0 0 3px rgba(245, 197, 24, 0.35),
+    0 0 28px 6px rgba(255, 200, 0, 0.40),
+    0 12px 40px rgba(6, 44, 100, 0.18);
+}
+
+/* Brilho prateado */
+.prize-card--silver:hover {
+  border-color: #b8b8b8;
+  box-shadow:
+    0 0 0 3px rgba(192, 192, 192, 0.45),
+    0 0 28px 6px rgba(210, 210, 210, 0.45),
+    0 12px 40px rgba(6, 44, 100, 0.18);
+}
+
+/* Brilho bronze */
+.prize-card--bronze:hover {
+  border-color: #cd7f32;
+  box-shadow:
+    0 0 0 3px rgba(205, 127, 50, 0.40),
+    0 0 28px 6px rgba(205, 127, 50, 0.38),
+    0 12px 40px rgba(6, 44, 100, 0.18);
 }
 
 /* Gold */
