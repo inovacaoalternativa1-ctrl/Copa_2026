@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './PrizesPage.css';
 
 const PRIZES = [
@@ -8,16 +8,8 @@ const PRIZES = [
     label: '1º Lugar',
     color: 'gold',
     items: [
-      {
-        icon: '🏖️',
-        text: 'Fim de semana em Porto de Galinhas',
-        img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Porto_de_Galinhas%2C_Ipojuca%2C_Pernambuco%2C_Brasil_%2837390694296%29.jpg/640px-Porto_de_Galinhas%2C_Ipojuca%2C_Pernambuco%2C_Brasil_%2837390694296%29.jpg',
-      },
-      {
-        icon: '💸',
-        text: 'Pix R$ 200,00',
-        img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Pix_logo.svg/320px-Pix_logo.svg.png',
-      },
+      { icon: '🏖️', text: 'Fim de semana em Porto de Galinhas', img: '/images/prizes/porto.jpg' },
+      { icon: '💸', text: 'Pix R$ 200,00', img: '/images/prizes/dinheiro.jpg' },
     ],
   },
   {
@@ -26,16 +18,8 @@ const PRIZES = [
     label: '2º Lugar',
     color: 'silver',
     items: [
-      {
-        icon: '🔊',
-        text: 'Alexa (Echo Dot)',
-        img: 'https://m.media-amazon.com/images/I/61dX5SjUnnL._AC_SL400_.jpg',
-      },
-      {
-        icon: '🍷',
-        text: 'Vinho',
-        img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/24701-nature-natural-beauty.jpg/320px-24701-nature-natural-beauty.jpg',
-      },
+      { icon: '🔊', text: 'Alexa (Echo Dot)', img: '/images/prizes/alexa.jpg' },
+      { icon: '🍷', text: 'Vinho Pérgola', img: '/images/prizes/vinho.png' },
     ],
   },
   {
@@ -44,21 +28,15 @@ const PRIZES = [
     label: '3º Lugar',
     color: 'bronze',
     items: [
-      {
-        icon: '⚽',
-        text: 'Bola Techmetria',
-        img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1d/Soccerball.svg/320px-Soccerball.svg.png',
-      },
-      {
-        icon: '🍷',
-        text: 'Vinho',
-        img: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/24701-nature-natural-beauty.jpg/320px-24701-nature-natural-beauty.jpg',
-      },
+      { icon: '⚽', text: 'Bola Techmetria', img: '/images/prizes/bola.jpeg' },
+      { icon: '🍷', text: 'Vinho Pérgola', img: '/images/prizes/vinho.png' },
     ],
   },
 ];
 
 export default function PrizesPage() {
+  const [lightbox, setLightbox] = useState(null);
+
   return (
     <div className="prizes-page">
       <div className="prizes-hero">
@@ -77,7 +55,11 @@ export default function PrizesPage() {
             <ul className="prize-card__items">
               {prize.items.map((item, i) => (
                 <li key={i} className="prize-card__item">
-                  <div className="prize-card__item-img-wrap">
+                  <div
+                    className="prize-card__item-img-wrap"
+                    onClick={() => item.img && setLightbox({ src: item.img, alt: item.text })}
+                    title="Clique para ampliar"
+                  >
                     {item.img
                       ? <img
                           src={item.img}
@@ -102,6 +84,16 @@ export default function PrizesPage() {
       <p className="prizes-footer">
         Vencedores definidos ao final da Copa do Mundo 2026 pelo ranking geral.
       </p>
+
+      {lightbox && (
+        <div className="prizes-lightbox" onClick={() => setLightbox(null)}>
+          <div className="prizes-lightbox__inner" onClick={e => e.stopPropagation()}>
+            <button className="prizes-lightbox__close" onClick={() => setLightbox(null)}>✕</button>
+            <img src={lightbox.src} alt={lightbox.alt} className="prizes-lightbox__img" />
+            <p className="prizes-lightbox__caption">{lightbox.alt}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
