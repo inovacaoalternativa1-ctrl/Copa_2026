@@ -17,6 +17,10 @@ export function usePush() {
   const [subscribed, setSubscribed]   = useState(false);
   const [loading, setLoading]         = useState(false);
 
+  const isIOS = typeof navigator !== 'undefined' && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isIOSStandalone = isIOS && typeof window !== 'undefined' && window.navigator.standalone === true;
+  const iosNeedsPWA = isIOS && !isIOSStandalone;
+
   const isSupported = typeof window !== 'undefined'
     && 'serviceWorker' in navigator
     && 'PushManager' in window
@@ -81,5 +85,5 @@ export function usePush() {
     await subscribe();
   };
 
-  return { isSupported, permission, subscribed, loading, toggle };
+  return { isSupported, iosNeedsPWA, permission, subscribed, loading, toggle };
 }

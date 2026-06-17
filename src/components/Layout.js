@@ -18,7 +18,8 @@ export default function Layout() {
   const isOnChat = location.pathname === '/chat';
   const isOnChatRef = useRef(isOnChat);
   const [unreadChat, setUnreadChat] = useState(0);
-  const { isSupported: pushSupported, permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, toggle: pushToggle } = usePush();
+  const { isSupported: pushSupported, iosNeedsPWA, permission: pushPermission, subscribed: pushSubscribed, loading: pushLoading, toggle: pushToggle } = usePush();
+  const [showIOSModal, setShowIOSModal] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState(null);
@@ -210,7 +211,16 @@ export default function Layout() {
           </nav>
 
           <div className="nav-user">
-            {pushSupported && pushPermission !== 'denied' && (
+            {iosNeedsPWA && (
+              <button
+                className="push-bell-btn"
+                onClick={() => setShowIOSModal(true)}
+                title="Ativar notificações"
+              >
+                🔕
+              </button>
+            )}
+            {pushSupported && !iosNeedsPWA && pushPermission !== 'denied' && (
               <button
                 className={`push-bell-btn ${pushSubscribed ? 'active' : ''}`}
                 onClick={pushToggle}
@@ -243,6 +253,30 @@ export default function Layout() {
       <footer className="footer">
         <p>© 2026 Copa Simulada · Alternativa Serviços · Participação gratuita</p>
       </footer>
+
+      {/* Modal iOS - Adicionar à tela inicial */}
+      {showIOSModal && (
+        <div className="modal-overlay" onClick={() => setShowIOSModal(false)}>
+          <div className="modal" style={{maxWidth: 360}} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">🔔 Ativar Notificações</span>
+              <button className="modal-close" onClick={() => setShowIOSModal(false)}>✕</button>
+            </div>
+            <div style={{padding: '20px', textAlign: 'center'}}>
+              <p style={{marginBottom: 16, fontSize: 15}}>Para receber notificações no iPhone, adicione o app à sua Tela de Início:</p>
+              <ol style={{textAlign: 'left', lineHeight: 2, fontSize: 14, paddingLeft: 20}}>
+                <li>Toque em <strong>Compartilhar</strong> <span style={{fontSize:18}}>⎋</span> no Safari</li>
+                <li>Toque em <strong>"Adicionar à Tela de Início"</strong></li>
+                <li>Abra o app pela Tela de Início</li>
+                <li>Toque no sininho 🔕 para ativar</li>
+              </ol>
+            </div>
+            <div style={{padding: '0 20px 20px'}}>
+              <button className="btn btn-primary btn-sm" style={{width:'100%'}} onClick={() => setShowIOSModal(false)}>Entendi</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Botão flutuante do Chat */}
       {!isOnChat && (
