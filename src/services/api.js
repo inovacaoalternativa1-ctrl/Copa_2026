@@ -1,7 +1,7 @@
 import supabase from './supabase';
 
 // ===== MATCHES =====
-export const getMatches = () => supabase.from('matches').select('*').order('match_date');
+export const getMatches = () => supabase.from('matches').select('*').order('is_finished').order('match_date');
 export const getMatch = (id) => supabase.from('matches').select('*').eq('id', id).single();
 
 // ===== SCORE PREDICTIONS =====
