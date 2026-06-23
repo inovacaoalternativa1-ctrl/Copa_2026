@@ -194,7 +194,6 @@ export default function LuckyPredictionPage() {
       <div className="lucky-banner">
         <strong><Flag team="brasil" size={26} /> Brasil × Escócia <Flag team="escocia" size={26} /></strong>
         <span>Palpite único — placar exato, quem marca primeiro e qual jogador marca primeiro.</span>
-        <span className="lucky-banner-note">⚠️ Escalação provisória/estimada — pode mudar até o jogo começar.</span>
       </div>
 
       {isLocked && (
