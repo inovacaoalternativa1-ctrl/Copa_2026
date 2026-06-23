@@ -1,0 +1,61 @@
+.section-title { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--blue2); margin-bottom: 16px; letter-spacing: 0.5px; }
+
+.spinner-sm { width: 22px; height: 22px; border: 2.5px solid var(--line); border-top-color: var(--blue); border-radius: 50%; animation: spinSm .65s linear infinite; }
+@keyframes spinSm { to { transform: rotate(360deg); } }
+
+/* ===== LOCK SCREEN ===== */
+.andrey-lock-screen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 60vh; padding: 20px;
+}
+.andrey-lock-card {
+  width: 100%; max-width: 380px; text-align: center;
+}
+.andrey-lock-hint {
+  color: var(--muted); font-size: 14px; margin-top: 4px;
+}
+.andrey-lock-card .form-group { text-align: left; }
+.andrey-lock-card .alert { margin: 12px 0; }
+
+/* ===== TOOL ===== */
+.andrey-tool-card { max-width: 560px; }
+
+.andrey-users-loading {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--muted); font-size: 14px; padding: 14px 4px;
+}
+
+.andrey-user-list {
+  display: flex; flex-direction: column; gap: 8px;
+  max-height: 280px; overflow-y: auto; margin-bottom: 8px;
+}
+
+.andrey-user-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  width: 100%; text-align: left; cursor: pointer;
+  padding: 10px 14px; border-radius: 12px;
+  border: 1.5px solid var(--line); background: white;
+  font-family: 'Inter', sans-serif; transition: all .15s;
+}
+.andrey-user-row:hover { background: var(--bg); }
+.andrey-user-row.selected { border-color: var(--blue); background: #f0f5ff; }
+
+.andrey-user-name { font-weight: 800; font-size: 14px; color: var(--text); }
+.andrey-user-fullname { font-size: 12px; color: var(--muted); }
+.andrey-user-bonus { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--orange); white-space: nowrap; }
+
+.andrey-give-panel {
+  margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line);
+}
+.andrey-give-summary {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 13px; color: var(--muted);
+  background: var(--bg); border-radius: 12px; padding: 12px 14px;
+}
+.andrey-give-summary strong { color: var(--blue2); font-size: 15px; }
+.andrey-give-current { margin-top: 4px; }
+
+@media (max-width: 600px) {
+  .andrey-tool-card { max-width: 100%; }
+  .andrey-user-bonus { margin-left: 0; }
+}

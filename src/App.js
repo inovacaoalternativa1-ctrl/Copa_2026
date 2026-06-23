@@ -14,6 +14,7 @@ import NewsPage from './pages/NewsPage';
 import PartnersPage from './pages/PartnersPage';
 import QuizPage from './pages/QuizPage';
 import PrizesPage from './pages/PrizesPage';
+import AdminAndreyPage from './pages/AdminAndreyPage';
 import './App.css';
 
 const Private = ({ children }) => {
@@ -27,6 +28,14 @@ const Admin = ({ children }) => {
   if (loading) return <div className="loading-screen"><div className="spinner" /></div>;
   if (!user) return <Navigate to="/login" />;
   if (!isAdmin) return <Navigate to="/" />;
+  return children;
+};
+
+const AndreyOnly = ({ children }) => {
+  const { user, isAndrey, loading } = useAuth();
+  if (loading) return <div className="loading-screen"><div className="spinner" /></div>;
+  if (!user) return <Navigate to="/login" />;
+  if (!isAndrey) return <Navigate to="/" />;
   return children;
 };
 
@@ -48,6 +57,7 @@ export default function App() {
             <Route path="parceiros" element={<PartnersPage />} />
             <Route path="premios" element={<PrizesPage />} />
             <Route path="admin" element={<Admin><AdminPage /></Admin>} />
+            <Route path="admin-andrey" element={<AndreyOnly><AdminAndreyPage /></AndreyOnly>} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -57,10 +57,13 @@ export const AuthProvider = ({ children }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null); setProfile(null);
+    sessionStorage.removeItem('copa_admin_andrey_unlocked');
   };
 
+  const isAndrey = (profile?.username || '').trim().toLowerCase() === 'andrey';
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile, isAdmin: profile?.role === 'admin' }}>
+    <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile, isAdmin: profile?.role === 'admin', isAndrey }}>
       {children}
     </AuthContext.Provider>
   );

@@ -12,7 +12,7 @@ const getInitials = (name = '') => {
 };
 
 export default function Layout() {
-  const { user, profile, signOut, isAdmin, refreshProfile } = useAuth();
+  const { user, profile, signOut, isAdmin, isAndrey, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isOnChat = location.pathname === '/chat';
@@ -208,6 +208,7 @@ export default function Layout() {
             <NavLink to="/parceiros" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>🤝 Parceiros</NavLink>
             <NavLink to="/premios" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>🎁 Prêmios</NavLink>
             {isAdmin && <NavLink to="/admin" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>⚙️ Admin</NavLink>}
+            {isAndrey && <NavLink to="/admin-andrey" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>👑 Admin Andrey</NavLink>}
           </nav>
 
           <div className="nav-user">
