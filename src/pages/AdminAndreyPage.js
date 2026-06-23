@@ -1,24 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { adminGetUsers } from '../services/api';
+import { adminGetUsers, getRanking, adminGiveBonusPoints } from '../services/api';
 import './AdminAndreyPage.css';
 
 const ADMIN_PASSWORD = '33763376';
 const SESSION_UNLOCK_KEY = 'copa_admin_andrey_unlocked';
-const BONUS_POINTS_KEY = 'copa_admin_andrey_bonus_points';
-
-const loadBonusPoints = () => {
-  try {
-    const raw = localStorage.getItem(BONUS_POINTS_KEY);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-};
-
-const saveBonusPoints = (map) => {
-  localStorage.setItem(BONUS_POINTS_KEY, JSON.stringify(map));
-};
 
 export default function AdminAndreyPage() {
   const { profile } = useAuth();
@@ -39,20 +25,29 @@ export default function AdminAndreyPage() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState('');
 
+  // Pontuação real (view "ranking" do Supabase) — id do usuário → linha do ranking
+  const [rankingMap, setRankingMap] = useState({});
+
   const [search, setSearch] = useState('');
   const [selectedUserId, setSelectedUserId] = useState('');
   const [amount, setAmount] = useState('');
   const [amountError, setAmountError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [bonusPoints, setBonusPoints] = useState(() => loadBonusPoints());
   const [giving, setGiving] = useState(false);
+
+  const loadRanking = () =>
+    getRanking().then(({ data }) => {
+      const map = {};
+      (data || []).forEach(r => { map[r.user_id] = r; });
+      setRankingMap(map);
+    });
 
   useEffect(() => {
     if (!podeAcessarAdmin) return;
     setUsersLoading(true);
     setUsersError('');
-    adminGetUsers()
-      .then(({ data, error }) => {
+    Promise.all([adminGetUsers(), loadRanking()])
+      .then(([{ data, error }]) => {
         if (error) { setUsersError('Não foi possível carregar a lista de usuários.'); return; }
         setUsers(data || []);
       })
@@ -70,7 +65,7 @@ export default function AdminAndreyPage() {
   }, [users, search]);
 
   const selectedUser = users.find(u => String(u.id) === String(selectedUserId)) || null;
-  const selectedUserPoints = selectedUser ? (bonusPoints[selectedUser.id] || 0) : 0;
+  const selectedUserRanking = selectedUser ? rankingMap[selectedUser.id] : null;
 
   const handleUnlock = () => {
     if (!usuarioEhAndrey) { setPasswordError('Acesso não permitido.'); return; }
@@ -103,7 +98,7 @@ export default function AdminAndreyPage() {
     setAmountError('');
   };
 
-  const handleGivePoints = () => {
+  const handleGivePoints = async () => {
     setSuccessMsg('');
 
     if (!usuarioEhAndrey || !unlocked) {
@@ -130,10 +125,13 @@ export default function AdminAndreyPage() {
     }
 
     setGiving(true);
-    const current = bonusPoints[selectedUser.id] || 0;
-    const updated = { ...bonusPoints, [selectedUser.id]: current + value };
-    setBonusPoints(updated);
-    saveBonusPoints(updated);
+    const { error } = await adminGiveBonusPoints(selectedUser.id, value);
+    if (error) {
+      setAmountError(`Erro ao salvar: ${error.message}`);
+      setGiving(false);
+      return;
+    }
+    await loadRanking();
     setAmount('');
     setAmountError('');
     setSuccessMsg(`Pontos adicionados com sucesso para ${selectedUser.username || selectedUser.full_name}.`);
@@ -187,6 +185,7 @@ export default function AdminAndreyPage() {
 
       <div className="card andrey-tool-card">
         <h3 className="section-title">Dar pontos</h3>
+        <p className="andrey-tool-hint">Os pontos são somados na coluna de extras e entram direto no ranking real.</p>
 
         <div className="form-group">
           <label htmlFor="andrey-user-search">Buscar usuário</label>
@@ -219,7 +218,9 @@ export default function AdminAndreyPage() {
                 >
                   <span className="andrey-user-name">{u.username || u.full_name || '—'}</span>
                   {u.full_name && u.username && <span className="andrey-user-fullname">{u.full_name}</span>}
-                  <span className="andrey-user-bonus">{bonusPoints[u.id] || 0} pts (local)</span>
+                  <span className="andrey-user-bonus">
+                    {Number(rankingMap[u.id]?.extra_points || 0).toFixed(2)} extras
+                  </span>
                 </button>
               ))
             )}
@@ -231,7 +232,11 @@ export default function AdminAndreyPage() {
             <div className="andrey-give-summary">
               <span>Usuário selecionado:</span>
               <strong>{selectedUser.username || selectedUser.full_name}</strong>
-              <span className="andrey-give-current">Pontuação atual (local): <strong>{selectedUserPoints}</strong></span>
+              <span className="andrey-give-current">
+                Extras atuais: <strong>{Number(selectedUserRanking?.extra_points || 0).toFixed(2)}</strong>
+                {' · '}
+                Total atual: <strong>{Number(selectedUserRanking?.total_points || 0).toFixed(2)}</strong>
+              </span>
             </div>
 
             <div className="form-group" style={{ marginTop: 12 }}>

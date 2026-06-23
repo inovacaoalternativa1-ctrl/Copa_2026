@@ -19,6 +19,7 @@
 
 /* ===== TOOL ===== */
 .andrey-tool-card { max-width: 560px; }
+.andrey-tool-hint { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
 
 .andrey-users-loading {
   display: flex; align-items: center; gap: 10px;

@@ -55,6 +55,10 @@ export const getRoundRanking = (round) =>
 export const getPhaseRanking = (phase) =>
   supabase.from('ranking_by_phase').select('*').eq('phase', phase).order('position').limit(100);
 
+// ===== ADMIN ANDREY: PONTOS BÔNUS =====
+export const adminGiveBonusPoints = (userId, amount) =>
+  supabase.rpc('add_bonus_points', { p_user_id: userId, p_amount: amount });
+
 // ===== CHAT =====
 export const getChatMessages = () => {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
