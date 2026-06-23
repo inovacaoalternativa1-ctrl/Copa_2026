@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getLuckyKickoff } from '../services/luckyAutoDetect';
 import './LuckyAnnouncementModal.css';
 
-const SEEN_KEY_PREFIX = 'copa_lucky_announcement_seen_';
+const SEEN_KEY_PREFIX = 'copa_lucky_announcement_seen_v2_';
 const BR_COLORS = ['#009C3B', '#FFDF00', '#002776', '#FFFFFF'];
 
 const spawnConfetti = (container) => {
