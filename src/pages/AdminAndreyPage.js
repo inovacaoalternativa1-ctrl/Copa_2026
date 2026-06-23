@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { adminGetUsers, getRanking, adminGiveBonusPoints } from '../services/api';
+import { adminGetUsers, getRanking, adminGiveBonusPoints, setLuckyResult, getLuckyResult } from '../services/api';
+import { detectLuckyResult } from '../services/luckyAutoDetect';
 import './AdminAndreyPage.css';
 
 const ADMIN_PASSWORD = '33763376';
@@ -138,6 +139,88 @@ export default function AdminAndreyPage() {
     setGiving(false);
   };
 
+  // Apuração automática do Palpite da Sorte (Brasil x Escócia)
+  const [luckyDetecting, setLuckyDetecting] = useState(false);
+  const [luckyError, setLuckyError] = useState('');
+  const [luckyPreview, setLuckyPreview] = useState(null);
+  const [luckySaving, setLuckySaving] = useState(false);
+  const [luckySuccess, setLuckySuccess] = useState('');
+  const [luckyExisting, setLuckyExisting] = useState(null);
+
+  useEffect(() => {
+    if (!podeAcessarAdmin) return;
+    getLuckyResult().then(({ data }) => setLuckyExisting(data || null));
+  }, [podeAcessarAdmin]);
+
+  const handleDetectLucky = async () => {
+    setLuckyError('');
+    setLuckySuccess('');
+    setLuckyDetecting(true);
+    try {
+      const result = await detectLuckyResult();
+      setLuckyPreview({
+        scoreA: result.scoreA,
+        scoreB: result.scoreB,
+        firstTeam: result.firstTeam || '',
+        scorerName: result.scorerMatched?.name || result.scorerNameRaw || '',
+        penalty: result.penalty,
+        redCard: result.redCard,
+        yellowCard: result.yellowCard,
+        yellowTeam: result.yellowTeam || '',
+        isFinished: result.isFinished,
+        status: result.status,
+        scorerNameRaw: result.scorerNameRaw,
+        scorerMatched: result.scorerMatched,
+      });
+    } catch (e) {
+      setLuckyError(e.message || 'Erro ao buscar resultado na API.');
+    }
+    setLuckyDetecting(false);
+  };
+
+  const handleManualLucky = () => {
+    setLuckyError('');
+    setLuckySuccess('');
+    setLuckyPreview({
+      scoreA: 0,
+      scoreB: 0,
+      firstTeam: '',
+      scorerName: '',
+      penalty: false,
+      redCard: false,
+      yellowCard: false,
+      yellowTeam: '',
+      isFinished: true,
+      status: 'Preenchimento manual',
+      scorerNameRaw: null,
+      scorerMatched: null,
+    });
+  };
+
+  const updateLuckyPreview = (field, value) => setLuckyPreview(prev => ({ ...prev, [field]: value }));
+
+  const handleConfirmLucky = async () => {
+    if (!luckyPreview) return;
+    setLuckyError('');
+    setLuckySaving(true);
+    const { error } = await setLuckyResult({
+      scoreA: parseInt(luckyPreview.scoreA, 10),
+      scoreB: parseInt(luckyPreview.scoreB, 10),
+      firstTeam: luckyPreview.firstTeam,
+      scorerName: luckyPreview.scorerName,
+      penalty: luckyPreview.penalty,
+      redCard: luckyPreview.redCard,
+      yellowCard: luckyPreview.yellowCard,
+      yellowTeam: luckyPreview.yellowTeam,
+      isFinished: luckyPreview.isFinished,
+    });
+    setLuckySaving(false);
+    if (error) { setLuckyError(`Erro ao salvar: ${error.message}`); return; }
+    setLuckySuccess('Resultado do Palpite da Sorte confirmado! Os pontos de todos já foram recalculados.');
+    setLuckyExisting({ ...luckyPreview, score_a: luckyPreview.scoreA, score_b: luckyPreview.scoreB });
+    setLuckyPreview(null);
+  };
+
   if (!usuarioEhAndrey) {
     return null;
   }
@@ -261,6 +344,107 @@ export default function AdminAndreyPage() {
               disabled={giving}
             >
               {giving ? 'Salvando...' : 'Confirmar entrega de pontos'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="card andrey-tool-card">
+        <h3 className="section-title">🍀 Apurar Palpite da Sorte (Brasil x Escócia)</h3>
+        <p className="andrey-tool-hint">
+          Busca o resultado real na API de futebol e calcula a pontuação de todo mundo automaticamente.
+        </p>
+
+        {luckyExisting?.is_finished && !luckyPreview && (
+          <div className="alert alert-success" style={{ marginBottom: 12 }}>
+            ✅ Resultado já apurado: {luckyExisting.score_a} × {luckyExisting.score_b} — pode rodar de novo se precisar corrigir.
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button className="btn btn-soft" onClick={handleDetectLucky} disabled={luckyDetecting}>
+            {luckyDetecting ? 'Buscando na API...' : '🔄 Verificar resultado'}
+          </button>
+          <button className="btn btn-soft" onClick={handleManualLucky} disabled={luckyDetecting}>
+            ✍️ Preencher manualmente
+          </button>
+        </div>
+
+        {luckyError && <div className="alert alert-error" style={{ marginTop: 12 }}>{luckyError}</div>}
+        {luckySuccess && <div className="alert alert-success" style={{ marginTop: 12 }}>{luckySuccess}</div>}
+
+        {luckyPreview && (
+          <div className="andrey-give-panel" style={{ marginTop: 16 }}>
+            <p className="andrey-tool-hint">
+              Status do jogo na API: <strong>{luckyPreview.status}</strong>
+              {!luckyPreview.isFinished && ' — jogo ainda não terminou, confira antes de confirmar.'}
+            </p>
+
+            <div className="form-group">
+              <label>Placar (Brasil × Escócia)</label>
+              <div className="andrey-score-row">
+                <input type="number" min="0" value={luckyPreview.scoreA}
+                  onChange={e => updateLuckyPreview('scoreA', e.target.value)} />
+                <span className="andrey-score-sep">×</span>
+                <input type="number" min="0" value={luckyPreview.scoreB}
+                  onChange={e => updateLuckyPreview('scoreB', e.target.value)} />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Quem marcou primeiro</label>
+              <select value={luckyPreview.firstTeam} onChange={e => updateLuckyPreview('firstTeam', e.target.value)}>
+                <option value="">—</option>
+                <option value="brasil">Brasil</option>
+                <option value="escocia">Escócia</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Jogador que marcou primeiro</label>
+              <input type="text" value={luckyPreview.scorerName}
+                onChange={e => updateLuckyPreview('scorerName', e.target.value)} />
+              {!luckyPreview.scorerMatched && luckyPreview.scorerNameRaw && (
+                <span className="andrey-tool-hint" style={{ display: 'block', marginTop: 4 }}>
+                  ⚠️ Não consegui casar "{luckyPreview.scorerNameRaw}" com a lista de convocados — confira/corrija o nome acima.
+                </span>
+              )}
+            </div>
+
+            <div className="andrey-check-group">
+              <label className="check-row">
+                <input type="checkbox" checked={!!luckyPreview.penalty}
+                  onChange={e => updateLuckyPreview('penalty', e.target.checked)} /> Houve pênalti
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={!!luckyPreview.redCard}
+                  onChange={e => updateLuckyPreview('redCard', e.target.checked)} /> Houve cartão vermelho
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={!!luckyPreview.yellowCard}
+                  onChange={e => updateLuckyPreview('yellowCard', e.target.checked)} /> Houve cartão amarelo
+              </label>
+            </div>
+
+            <div className="form-group">
+              <label>Seleção que recebeu cartão amarelo</label>
+              <select value={luckyPreview.yellowTeam} onChange={e => updateLuckyPreview('yellowTeam', e.target.value)}>
+                <option value="">—</option>
+                <option value="brasil">Brasil</option>
+                <option value="ambos">Ambos</option>
+                <option value="escocia">Escócia</option>
+              </select>
+            </div>
+
+            <div className="andrey-check-group" style={{ marginBottom: 20 }}>
+              <label className="check-row">
+                <input type="checkbox" checked={!!luckyPreview.isFinished}
+                  onChange={e => updateLuckyPreview('isFinished', e.target.checked)} /> Jogo terminado (libera pontuação pra todo mundo)
+              </label>
+            </div>
+
+            <button className="btn btn-primary btn-full" onClick={handleConfirmLucky} disabled={luckySaving}>
+              {luckySaving ? 'Salvando...' : '✅ Confirmar resultado'}
             </button>
           </div>
         )}

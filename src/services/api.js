@@ -59,6 +59,32 @@ export const getPhaseRanking = (phase) =>
 export const adminGiveBonusPoints = (userId, amount) =>
   supabase.rpc('add_bonus_points', { p_user_id: userId, p_amount: amount });
 
+// ===== PALPITE DA SORTE (Brasil x Escócia) =====
+export const getMyLuckyPrediction = (userId) =>
+  supabase.from('lucky_predictions').select('*').eq('user_id', userId).maybeSingle();
+
+export const upsertLuckyPrediction = (payload) =>
+  supabase.from('lucky_predictions').upsert(payload, { onConflict: 'user_id' });
+
+export const getLuckyRanking = () =>
+  supabase.from('lucky_ranking').select('*').order('position');
+
+export const getLuckyResult = () =>
+  supabase.from('lucky_result').select('*').eq('id', 1).maybeSingle();
+
+export const setLuckyResult = (payload) =>
+  supabase.rpc('set_lucky_result', {
+    p_score_a: payload.scoreA,
+    p_score_b: payload.scoreB,
+    p_first_team: payload.firstTeam,
+    p_scorer_name: payload.scorerName,
+    p_penalty: payload.penalty,
+    p_red_card: payload.redCard,
+    p_yellow_card: payload.yellowCard,
+    p_yellow_team: payload.yellowTeam,
+    p_is_finished: payload.isFinished,
+  });
+
 // ===== CHAT =====
 export const getChatMessages = () => {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();

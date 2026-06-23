@@ -56,7 +56,24 @@
 .andrey-give-summary strong { color: var(--blue2); font-size: 15px; }
 .andrey-give-current { margin-top: 4px; }
 
+/* ===== APURAÇÃO PALPITE DA SORTE ===== */
+.andrey-score-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.andrey-score-row input {
+  width: 76px; text-align: center; font-weight: 800; font-size: 18px;
+}
+.andrey-score-sep { font-weight: 800; color: var(--muted); font-size: 16px; }
+
+.andrey-check-group {
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--bg); border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 16px;
+}
+.andrey-check-group .check-row { font-size: 14px; font-weight: 700; color: var(--text); }
+
 @media (max-width: 600px) {
   .andrey-tool-card { max-width: 100%; }
   .andrey-user-bonus { margin-left: 0; }
+  .andrey-score-row input { width: 64px; font-size: 16px; }
 }

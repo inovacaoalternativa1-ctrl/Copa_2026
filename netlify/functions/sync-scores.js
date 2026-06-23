@@ -81,6 +81,85 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, score
   };
 };
 
+// ── Palpite da Sorte (Brasil x Escócia) — feature isolada, não toca em "matches" ──
+// Reaproveita os fixtures que a Etapa 1 (live) e Etapa 2 (por data) já buscam pra
+// detectar esse jogo específico sem gastar requisição extra na API-Football.
+const isLuckyFixture = (f) => {
+  const h = f.teams.home.name, a = f.teams.away.name;
+  return (h === 'Brazil' && a === 'Scotland') || (h === 'Scotland' && a === 'Brazil');
+};
+
+const LUCKY_PLAYERS = [
+  ['Alisson','brasil'],['Ederson','brasil'],['Weverton','brasil'],
+  ['Alex Sandro','brasil'],['Bremer','brasil'],['Danilo','brasil'],['Marquinhos','brasil'],
+  ['Douglas Santos','brasil'],['Gabriel Magalhães','brasil'],['Ibañez','brasil'],['Léo Pereira','brasil'],
+  ['Bruno Guimarães','brasil'],['Casemiro','brasil'],['Lucas Paquetá','brasil'],['Danilo Santos','brasil'],['Éderson','brasil'],['Fabinho','brasil'],
+  ['Neymar Júnior','brasil'],['Raphinha','brasil'],['Vinícius Júnior','brasil'],['Endrick','brasil'],['Gabriel Martinelli','brasil'],
+  ['Igor Thiago','brasil'],['Luiz Henrique','brasil'],['Matheus Cunha','brasil'],['Rayan','brasil'],
+  ['Angus Gunn','escocia'],['Craig Gordon','escocia'],['Liam Kelly','escocia'],
+  ['Andy Robertson','escocia'],['Grant Hanley','escocia'],['Jack Hendry','escocia'],['Nathan Patterson','escocia'],
+  ['Aaron Hickey','escocia'],['Anthony Ralston','escocia'],['Dominic Hyam','escocia'],['John Souttar','escocia'],['Kieran Tierney','escocia'],['Scott McKenna','escocia'],
+  ['John McGinn','escocia'],['Kenny McLean','escocia'],['Scott McTominay','escocia'],['Ben Gannon-Doak','escocia'],['Lewis Ferguson','escocia'],['Ryan Christie','escocia'],['Tyler Fletcher','escocia'],
+  ['Ché Adams','escocia'],['Lawrence Shankland','escocia'],['Ross Stewart','escocia'],['Findlay Curtis','escocia'],['George Hirst','escocia'],['Lyndon Dykes','escocia'],
+];
+const normLuckyName = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z\s]/g,'').trim();
+const matchLuckyPlayer = (apiName, team) => {
+  if (!apiName) return null;
+  const apiTokens = new Set(normLuckyName(apiName).split(/\s+/).filter(Boolean));
+  let best = null, bestScore = 0;
+  for (const [name, t] of LUCKY_PLAYERS) {
+    if (team && t !== team) continue;
+    const overlap = normLuckyName(name).split(/\s+/).filter(tok => apiTokens.has(tok)).length;
+    if (overlap > bestScore) { bestScore = overlap; best = name; }
+  }
+  return bestScore > 0 ? best : null;
+};
+
+const finalizeLuckyResult = async (supabase, AF_KEY, fixture) => {
+  try {
+    const fixtureId = fixture.fixture.id;
+    const homeIsBrasil = fixture.teams.home.name === 'Brazil';
+    const scoreA = homeIsBrasil ? fixture.goals.home : fixture.goals.away;
+    const scoreB = homeIsBrasil ? fixture.goals.away : fixture.goals.home;
+    const brasilTeamId = homeIsBrasil ? fixture.teams.home.id : fixture.teams.away.id;
+    const escociaTeamId = homeIsBrasil ? fixture.teams.away.id : fixture.teams.home.id;
+
+    let events = [];
+    if (fixtureId && AF_KEY) {
+      const evRes = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${fixtureId}`, { headers: { 'x-apisports-key': AF_KEY } });
+      if (evRes.ok) events = (await evRes.json()).response || [];
+    }
+
+    const goals = events.filter(e => e.type === 'Goal' && e.detail !== 'Missed Penalty');
+    const firstGoal = goals[0];
+    const firstTeam = firstGoal
+      ? (firstGoal.team.id === brasilTeamId ? 'brasil' : firstGoal.team.id === escociaTeamId ? 'escocia' : null)
+      : null;
+    const scorerNameRaw = firstGoal?.player?.name || null;
+    const scorerName = matchLuckyPlayer(scorerNameRaw, firstTeam) || scorerNameRaw;
+
+    const hasPenalty = events.some(e => e.type === 'Goal' && (e.detail === 'Penalty' || e.detail === 'Missed Penalty'));
+    const isRedLucky = e => e.type === 'Card' && (e.detail === 'Red Card' || e.detail === 'Yellow Red Card');
+    const hasRedCard = events.some(isRedLucky);
+    const hasYellowBrasil = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.team.id === brasilTeamId);
+    const hasYellowEscocia = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.team.id === escociaTeamId);
+    const yellowTeam = hasYellowBrasil && hasYellowEscocia ? 'ambos' : hasYellowBrasil ? 'brasil' : hasYellowEscocia ? 'escocia' : null;
+
+    await supabase.from('lucky_result').upsert({
+      id: 1,
+      score_a: scoreA, score_b: scoreB,
+      first_team: firstTeam,
+      scorer_name: scorerName,
+      penalty: hasPenalty, red_card: hasRedCard,
+      yellow_card: hasYellowBrasil || hasYellowEscocia, yellow_team: yellowTeam,
+      is_finished: true, validated_at: new Date().toISOString(), validated_by: null,
+    });
+    console.log(`[sync-scores] Palpite da Sorte apurado automaticamente: ${scoreA}×${scoreB}, 1º gol: ${firstTeam} (${scorerName || 'não identificado'})`);
+  } catch (e) {
+    console.error('[sync-scores] erro ao apurar Palpite da Sorte:', e.message);
+  }
+};
+
 // Mapeamento abreviação ESPN (3 letras) → nome em inglês
 const ESPN_ABBR_TO_NAME = {
   'SCO':'Scotland','ENG':'England','WAL':'Wales','HAI':'Haiti',
@@ -276,11 +355,17 @@ exports.handler = async () => {
   );
 
   const { data: matches } = await supabase.from('matches').select('*').eq('is_finished', false);
-  if (!matches?.length) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo pendente' }) };
+
+  // Palpite da Sorte — checa se já foi apurado antes de gastar qualquer ciclo com isso.
+  const { data: luckyRow } = await supabase.from('lucky_result').select('is_finished').eq('id', 1).maybeSingle();
+  const luckyPending = !luckyRow?.is_finished;
+  let luckyFixtureFound = null;
 
   const now = Date.now();
-  const activeMatches = matches.filter(m => (now - new Date(m.match_date).getTime()) / 60000 >= -30);
-  if (!activeMatches.length) return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo iniciado ainda' }) };
+  const activeMatches = (matches || []).filter(m => (now - new Date(m.match_date).getTime()) / 60000 >= -30);
+  if (!activeMatches.length && !luckyPending) {
+    return { statusCode: 200, body: JSON.stringify({ updated: 0, matches: [], body: 'Nenhum jogo pendente' }) };
+  }
 
   const AF_KEY = process.env.API_FOOTBALL_KEY || process.env.REACT_APP_API_FOOTBALL_KEY;
 
@@ -392,13 +477,16 @@ exports.handler = async () => {
     if (liveRes.ok) {
       for (const f of (await liveRes.json()).response || []) {
         registerFixture({ ...f, _afId: f.fixture.id }, f.teams.home.name, f.teams.away.name);
+        if (luckyPending && !luckyFixtureFound && isLuckyFixture(f) && COMPLETED.has(f.fixture.status.short)) {
+          luckyFixtureFound = f;
+        }
       }
     }
     console.log(`[sync] Etapa 1 (AF live): ${fixtureByMatchId.size}/${activeMatches.length} jogos encontrados`);
   } catch(e) { console.warn('[sync] Etapa 1 erro:', e.message); }
 
   // ── Etapa 2: API-Football por data (jogos encerrados hoje/ontem) ─────────────
-  if (AF_KEY && unmatched().length) {
+  if (AF_KEY && (unmatched().length || (luckyPending && !luckyFixtureFound))) {
     try {
       const today     = new Date().toISOString().split('T')[0];
       const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
@@ -412,11 +500,19 @@ exports.handler = async () => {
       for (const f of [...d1, ...d2]) {
         if (seen.has(f.fixture.id)) continue;
         seen.add(f.fixture.id);
+        if (luckyPending && !luckyFixtureFound && isLuckyFixture(f) && COMPLETED.has(f.fixture.status.short)) {
+          luckyFixtureFound = f;
+        }
         if (!COMPLETED.has(f.fixture.status.short)) continue;
         registerFixture({ ...f, _afId: f.fixture.id }, f.teams.home.name, f.teams.away.name);
       }
       console.log(`[sync] Etapa 2 (AF data): ${fixtureByMatchId.size}/${activeMatches.length} jogos encontrados`);
     } catch(e) { console.warn('[sync] Etapa 2 erro:', e.message); }
+  }
+
+  // ── Apuração automática do Palpite da Sorte (Brasil x Escócia) ───────────────
+  if (luckyFixtureFound) {
+    await finalizeLuckyResult(supabase, AF_KEY, luckyFixtureFound);
   }
 
   // ── Etapa 3: football-data.org (Copa encerrada, plano free) ─────────────────

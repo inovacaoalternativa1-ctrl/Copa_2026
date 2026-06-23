@@ -244,6 +244,24 @@
   flex: 1;
 }
 
+/* ── Palpite da Sorte ── */
+.prizes-hero--lucky { padding-top: 16px; }
+.prizes-hero--lucky .prizes-trophy { animation: none; }
+
+.prize-card--lucky .prize-card__header { flex-wrap: wrap; }
+
+.prize-card__lucky-tag {
+  margin-left: auto;
+  background: #fff4e8;
+  border: 1px solid rgba(255,122,0,.3);
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
 /* ── Footer note ── */
 .prizes-footer {
   text-align: center;
@@ -342,4 +360,7 @@
 
   .prize-card__item-icon { font-size: 32px; }
   .prize-card__item-text { font-size: 13px; }
+
+  .prize-card__lucky-tag { margin-left: 0; font-size: 10px; padding: 3px 9px; }
+  .prizes-hero--lucky .prizes-title { font-size: 34px; }
 }

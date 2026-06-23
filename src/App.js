@@ -15,6 +15,7 @@ import PartnersPage from './pages/PartnersPage';
 import QuizPage from './pages/QuizPage';
 import PrizesPage from './pages/PrizesPage';
 import AdminAndreyPage from './pages/AdminAndreyPage';
+import LuckyPredictionPage from './pages/LuckyPredictionPage';
 import './App.css';
 
 const Private = ({ children }) => {
@@ -56,6 +57,7 @@ export default function App() {
             <Route path="quiz" element={<QuizPage />} />
             <Route path="parceiros" element={<PartnersPage />} />
             <Route path="premios" element={<PrizesPage />} />
+            <Route path="palpite-sorte" element={<LuckyPredictionPage />} />
             <Route path="admin" element={<Admin><AdminPage /></Admin>} />
             <Route path="admin-andrey" element={<AndreyOnly><AdminAndreyPage /></AndreyOnly>} />
           </Route>

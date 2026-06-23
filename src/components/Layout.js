@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-do
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
 import { usePush } from '../hooks/usePush';
+import LuckyAnnouncementModal from './LuckyAnnouncementModal';
 import './Layout.css';
 
 const getInitials = (name = '') => {
@@ -207,6 +208,7 @@ export default function Layout() {
             <NavLink to="/noticias" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>📰 Notícias</NavLink>
             <NavLink to="/parceiros" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>🤝 Parceiros</NavLink>
             <NavLink to="/premios" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>🎁 Prêmios</NavLink>
+            <NavLink to="/palpite-sorte" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>🍀 Palpite da Sorte</NavLink>
             {isAdmin && <NavLink to="/admin" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>⚙️ Admin</NavLink>}
             {isAndrey && <NavLink to="/admin-andrey" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setMenuOpen(false)}>👑 Admin Andrey</NavLink>}
           </nav>
@@ -387,6 +389,8 @@ export default function Layout() {
           </div>
         );
       })()}
+
+      <LuckyAnnouncementModal />
     </div>
   );
 }

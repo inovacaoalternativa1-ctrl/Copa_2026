@@ -25,6 +25,27 @@ const PRIZES = [
   },
 ];
 
+const LUCKY_PRIZES = [
+  {
+    position: 1, medal: '🥇', label: '1º Lugar', color: 'gold',
+    items: [
+      { icon: '👕', text: 'Camisa do Brasil Techmetria + Vinho', img: '/images/lucky-prizes/primeiro-lugar.jpg' },
+    ],
+  },
+  {
+    position: 2, medal: '🥈', label: '2º Lugar', color: 'silver',
+    items: [
+      { icon: '👕', text: 'Camisa Copa Alternativa 2026 + Vinho + Copo', img: '/images/lucky-prizes/segundo-lugar.jpg' },
+    ],
+  },
+  {
+    position: 3, medal: '🥉', label: '3º Lugar', color: 'bronze',
+    items: [
+      { icon: '🧢', text: 'Boné + Copo Copa Alternativa 2026', img: '/images/lucky-prizes/terceiro-lugar.jpg' },
+    ],
+  },
+];
+
 const BR = ['#009C3B','#FFDF00','#002776','#FFFFFF','#FFDF00','#009C3B','#FFDF00','#009C3B'];
 
 function spawnBurst(card) {
@@ -127,6 +148,51 @@ export default function PrizesPage() {
 
       <p className="prizes-footer">
         Vencedores definidos ao final da Copa do Mundo 2026 pelo ranking geral.
+      </p>
+
+      <div className="prizes-hero prizes-hero--lucky">
+        <div className="prizes-trophy">🍀</div>
+        <h1 className="prizes-title">Prêmios — Palpite da Sorte</h1>
+        <p className="prizes-subtitle">Ranking separado, exclusivo do palpite Brasil × Escócia</p>
+      </div>
+
+      <div className="prizes-list">
+        {LUCKY_PRIZES.map(prize => (
+          <div
+            key={prize.position}
+            className={`prize-card prize-card--${prize.color} prize-card--lucky`}
+            onMouseEnter={onEnter}
+            onMouseLeave={onLeave}
+          >
+            <div className="prize-card__header">
+              <span className="prize-card__medal">{prize.medal}</span>
+              <span className="prize-card__label">{prize.label}</span>
+              <span className="prize-card__lucky-tag">🍀 Palpite da Sorte</span>
+            </div>
+            <ul className="prize-card__items">
+              {prize.items.map((item, i) => (
+                <li key={i} className="prize-card__item">
+                  <div
+                    className="prize-card__item-img-wrap"
+                    onClick={() => item.img && setLightbox({ src: item.img, alt: item.text })}
+                    title="Clique para ampliar"
+                  >
+                    {item.img
+                      ? <img src={item.img} alt={item.text} className="prize-card__item-img"
+                          onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+                      : null}
+                    <span className="prize-card__item-icon" style={{ display: item.img ? 'none' : 'flex' }}>{item.icon}</span>
+                  </div>
+                  <span className="prize-card__item-text">{item.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <p className="prizes-footer">
+        Vencedores definidos pelo resultado real do jogo Brasil × Escócia — ranking independente da Copa.
       </p>
 
       {lightbox && (

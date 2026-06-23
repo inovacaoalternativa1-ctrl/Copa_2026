@@ -1,0 +1,117 @@
+.la-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(2, 10, 30, 0.72);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: la-fade-in 0.25s ease;
+  overflow: hidden;
+}
+
+@keyframes la-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.la-confetti-layer {
+  position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+}
+
+.la-confetti {
+  position: absolute; top: -10px; pointer-events: none;
+}
+
+@keyframes la-fall {
+  0%   { opacity: 1; transform: translateY(0)      translateX(0)            rotate(0deg); }
+  100% { opacity: 0; transform: translateY(115vh)   translateX(var(--drift)) rotate(var(--rot)); }
+}
+
+.la-modal {
+  position: relative;
+  width: 100%; max-width: 440px;
+  background: linear-gradient(160deg, #062c64 0%, #004aad 55%, #0a3e8c 100%);
+  border-radius: 24px;
+  padding: 36px 28px 28px;
+  text-align: center;
+  color: white;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45), 0 0 0 3px rgba(255,223,0,0.25);
+  animation: la-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 1;
+}
+
+@keyframes la-pop {
+  from { opacity: 0; transform: scale(0.85) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.la-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 32px; height: 32px; border-radius: 50%;
+  border: none; background: rgba(255,255,255,0.15); color: white;
+  font-size: 16px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.la-close:hover { background: rgba(255,255,255,0.28); }
+
+.la-trophy {
+  font-size: 56px; line-height: 1; margin-bottom: 6px;
+  animation: la-bounce 1.8s ease-in-out infinite;
+}
+@keyframes la-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+
+.la-kicker {
+  display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 1.2px;
+  color: #ffd23f; background: rgba(255,210,63,0.14);
+  border: 1px solid rgba(255,210,63,0.4);
+  padding: 4px 12px; border-radius: 999px; margin-bottom: 12px;
+}
+
+.la-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 30px; letter-spacing: 0.5px;
+  margin: 0 0 14px; line-height: 1.15;
+}
+
+.la-teams {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 17px; font-weight: 800; margin: 0 0 14px;
+}
+.la-versus { color: #ffd23f; font-weight: 900; }
+.la-flag { width: 26px; height: 19px; object-fit: cover; border-radius: 3px; box-shadow: 0 0 0 1px rgba(255,255,255,.4); }
+
+.la-text {
+  font-size: 14px; line-height: 1.55; opacity: 0.92;
+  margin: 0 0 18px;
+}
+
+.la-kickoff-box {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-size: 13.5px; font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.la-cta { font-size: 15px; padding: 14px; }
+
+@media (max-width: 480px) {
+  .la-modal { padding: 26px 18px 20px; border-radius: 18px; }
+  .la-trophy { font-size: 44px; }
+  .la-kicker { font-size: 10px; padding: 3px 10px; }
+  .la-title { font-size: 22px; }
+  .la-teams { font-size: 13.5px; gap: 7px; flex-wrap: wrap; }
+  .la-flag { width: 22px; height: 16px; }
+  .la-text { font-size: 13px; }
+  .la-kickoff-box { font-size: 12.5px; padding: 10px 12px; }
+  .la-cta { font-size: 14px; padding: 13px; }
+  .la-close { top: 10px; right: 10px; width: 28px; height: 28px; font-size: 14px; }
+}
+
+@media (max-width: 360px) {
+  .la-title { font-size: 19px; }
+  .la-teams { font-size: 12.5px; }
+}
