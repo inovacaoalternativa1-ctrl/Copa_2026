@@ -25,7 +25,7 @@ export default function AdminAndreyPage() {
 
   // Centraliza a validação de acesso — mesma lógica usada para liberar e para
   // checar novamente antes de qualquer ação dentro da área.
-  const usuarioEhAndrey = (profile?.username || '').trim().toLowerCase() === 'andrey';
+  const usuarioEhAndrey = (profile?.username || '').trim().toLowerCase() === 'andrey nonardo';
 
   const [unlocked, setUnlocked] = useState(() => sessionStorage.getItem(SESSION_UNLOCK_KEY) === 'true');
   const [passwordInput, setPasswordInput] = useState('');

@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }) => {
     sessionStorage.removeItem('copa_admin_andrey_unlocked');
   };
 
-  const isAndrey = (profile?.username || '').trim().toLowerCase() === 'andrey';
+  const isAndrey = (profile?.username || '').trim().toLowerCase() === 'andrey nonardo';
 
   return (
     <AuthContext.Provider value={{ user, profile, loading, signUp, signIn, signOut, refreshProfile, isAdmin: profile?.role === 'admin', isAndrey }}>
