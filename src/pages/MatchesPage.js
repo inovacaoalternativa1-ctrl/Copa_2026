@@ -166,7 +166,15 @@ export default function MatchesPage() {
         </div>
       ))}
 
-      {filtered.length === 0 && <div className="empty-state"><span className="empty-icon">🏟️</span><p>Nenhum jogo encontrado</p></div>}
+      {filtered.length === 0 && filter === 'round_of_32' && (
+        <div className="empty-state">
+          <span className="empty-icon">⏳</span>
+          <p>EM BREVE será lançado os jogos quando a fase de grupo finalizar.</p>
+        </div>
+      )}
+      {filtered.length === 0 && filter !== 'round_of_32' && (
+        <div className="empty-state"><span className="empty-icon">🏟️</span><p>Nenhum jogo encontrado</p></div>
+      )}
     </div>
   );
 }
