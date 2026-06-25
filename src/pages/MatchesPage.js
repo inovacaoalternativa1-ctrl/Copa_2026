@@ -6,7 +6,7 @@ import supabase from '../services/supabase';
 import { syncLiveScores } from '../services/syncScores';
 import './MatchesPage.css';
 
-const PHASES = { groups:'Fase de Grupos', round_of_16:'Oitavas', quarterfinals:'Quartas', semifinals:'Semifinal', final:'Final' };
+const PHASES = { groups:'Fase de Grupos', round_of_32:'16 Avos', round_of_16:'Oitavas', quarterfinals:'Quartas', semifinals:'Semifinal', final:'Final' };
 
 // Converts flag emoji or ISO code to a flagcdn.com image URL.
 // Handles: standard country flags (🇧🇷), subdivision flags (🏴󠁧󠁢󠁳󠁣󠁴󠁿), and plain ISO codes (BR).
@@ -102,7 +102,7 @@ export default function MatchesPage() {
       <div className="page-header">
         <h1 className="page-title">⚽ Jogos</h1>
         <div className="phase-filter">
-          {['all','groups','round_of_16','quarterfinals','semifinals','final'].map(f => (
+          {['all','groups','round_of_32','round_of_16','quarterfinals','semifinals','final'].map(f => (
             <button key={f} className={`filter-btn ${filter===f?'active':''}`} onClick={()=>setFilter(f)}>
               {f==='all'?'Todos':PHASES[f]}
             </button>

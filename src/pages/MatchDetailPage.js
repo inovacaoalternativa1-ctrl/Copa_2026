@@ -23,7 +23,7 @@ const Flag = ({ flag, name }) => {
     : <span style={{marginRight:4}}>{flag}</span>;
 };
 
-const PHASES = { groups:'Fase de Grupos', round_of_16:'Oitavas de Final', quarterfinals:'Quartas de Final', semifinals:'Semifinal', final:'Final' };
+const PHASES = { groups:'Fase de Grupos', round_of_32:'16 Avos de Final', round_of_16:'Oitavas de Final', quarterfinals:'Quartas de Final', semifinals:'Semifinal', final:'Final' };
 const POINTS_TABLE = [
   { pts: 5, label: 'Placar exato' },
   { pts: 3, label: 'Vencedor/Empate' },

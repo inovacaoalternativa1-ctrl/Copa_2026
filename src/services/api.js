@@ -19,7 +19,7 @@ export const upsertScorePrediction = (userId, matchId, scoreA, scoreB) =>
 
 // ===== EXTRA TYPES =====
 export const getExtraTypes = (phase = 'groups') => {
-  const field = `applicable_in_${phase === 'round_of_16' || phase === 'quarterfinals' || phase === 'semifinals' ? 'knockout' : phase}`;
+  const field = `applicable_in_${['round_of_32', 'round_of_16', 'quarterfinals', 'semifinals'].includes(phase) ? 'knockout' : phase}`;
   return supabase.from('extra_prediction_types').select('*').eq('is_active', true).eq(field, true).order('base_points');
 };
 

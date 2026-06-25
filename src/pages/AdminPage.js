@@ -22,7 +22,7 @@ const sendScorePush = (teamA, sA, sB, teamB) => {
 };
 
 const PHASE_LABELS = {
-  groups: 'Grupos', round_of_16: 'Oitavas', quarterfinals: 'Quartas',
+  groups: 'Grupos', round_of_32: '16 Avos', round_of_16: 'Oitavas', quarterfinals: 'Quartas',
   semifinals: 'Semis', final: 'Final', third_place: '3° Lugar'
 };
 
@@ -47,7 +47,7 @@ const Flag = ({ flag, name, size = 24 }) => {
 
 const getApplicableExtras = (extraTypes, phase) => {
   if (!phase) return extraTypes.filter(t => t.is_active);
-  const isKnockout = ['round_of_16', 'quarterfinals', 'semifinals', 'third_place'].includes(phase);
+  const isKnockout = ['round_of_32', 'round_of_16', 'quarterfinals', 'semifinals', 'third_place'].includes(phase);
   const isFinal = phase === 'final';
   return extraTypes.filter(t => {
     if (!t.is_active) return false;

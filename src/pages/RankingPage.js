@@ -10,6 +10,7 @@ const TABS = [
   { key: '1',              label: '1ª Rodada' },
   { key: '2',              label: '2ª Rodada' },
   { key: '3',              label: '3ª Rodada' },
+  { key: 'round_of_32',   label: '16 Avos' },
   { key: 'round_of_16',   label: 'Oitavas' },
   { key: 'quarterfinals', label: 'Quartas' },
   { key: 'semifinals',    label: 'Semifinal' },
@@ -18,15 +19,15 @@ const TABS = [
 
 const TAB_LABEL = {
   '1': '1ª Rodada', '2': '2ª Rodada', '3': '3ª Rodada',
-  round_of_16: 'Oitavas de Final', quarterfinals: 'Quartas de Final',
+  round_of_32: '16 Avos de Final', round_of_16: 'Oitavas de Final', quarterfinals: 'Quartas de Final',
   semifinals: 'Semifinal', final: 'Final',
 };
 
 const GROUP_ROUNDS = ['1', '2', '3'];
-const KNOCKOUT_PHASES = ['round_of_16', 'quarterfinals', 'semifinals', 'final'];
+const KNOCKOUT_PHASES = ['round_of_32', 'round_of_16', 'quarterfinals', 'semifinals', 'final'];
 
 const EMPTY_PHASES = {
-  round_of_16: [], quarterfinals: [], semifinals: [], final: [],
+  round_of_32: [], round_of_16: [], quarterfinals: [], semifinals: [], final: [],
 };
 
 export default function RankingPage() {
@@ -39,15 +40,16 @@ export default function RankingPage() {
 
   useEffect(() => {
     const load = async () => {
-      const [geral, r1, r2, r3, ro16, qf, sf, fin] = await Promise.all([
+      const [geral, r1, r2, r3, ro32, ro16, qf, sf, fin] = await Promise.all([
         getRanking(),
         getRoundRanking(1), getRoundRanking(2), getRoundRanking(3),
-        getPhaseRanking('round_of_16'), getPhaseRanking('quarterfinals'),
+        getPhaseRanking('round_of_32'), getPhaseRanking('round_of_16'), getPhaseRanking('quarterfinals'),
         getPhaseRanking('semifinals'),  getPhaseRanking('final'),
       ]);
       setRanking(geral.data || []);
       setRoundRankings({ 1: r1.data || [], 2: r2.data || [], 3: r3.data || [] });
       setPhaseRankings({
+        round_of_32:   ro32.data || [],
         round_of_16:   ro16.data || [],
         quarterfinals: qf.data  || [],
         semifinals:    sf.data  || [],
@@ -63,8 +65,8 @@ export default function RankingPage() {
     [1, 2, 3].forEach(r => {
       (roundRankings[r] || []).forEach(u => { map[u.user_id] = `${r}ª Rod.`; });
     });
-    const labels = { round_of_16: 'Oitavas', quarterfinals: 'Quartas', semifinals: 'Semifinal', final: 'Final' };
-    ['round_of_16', 'quarterfinals', 'semifinals', 'final'].forEach(ph => {
+    const labels = { round_of_32: '16 Avos', round_of_16: 'Oitavas', quarterfinals: 'Quartas', semifinals: 'Semifinal', final: 'Final' };
+    ['round_of_32', 'round_of_16', 'quarterfinals', 'semifinals', 'final'].forEach(ph => {
       (phaseRankings[ph] || []).forEach(u => { map[u.user_id] = labels[ph]; });
     });
     return map;
