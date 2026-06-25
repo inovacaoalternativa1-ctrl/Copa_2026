@@ -81,6 +81,23 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, score
   };
 };
 
+// Quando a fixture é achada mas a API não retorna nenhum evento (gol/cartão), não dá
+// pra afirmar que "nada aconteceu" — isso geraria falso "Não"/"Nenhum" pra quem acertou
+// extras que realmente ocorreram. Nesse caso valida só o que é dedutível pelo placar
+// final, deixando o resto pendente (sem sobrescrever com um palpite errado).
+const buildScoreOnlyResults = (scoreA, scoreB, status) => {
+  const out = {};
+  if (scoreA > 0 && scoreB === 0) out[3] = { team: 'A' };
+  else if (scoreB > 0 && scoreA === 0) out[3] = { team: 'B' };
+  else if (scoreA === 0 && scoreB === 0) out[3] = { team: 'none' };
+  if (scoreA === 0) out[4] = { answer: 'no' };
+  if (scoreB === 0) out[5] = { answer: 'no' };
+  out[12] = yn(scoreA > 0 && scoreB > 0);
+  out[15] = yn(status === 'AET' || status === 'PEN');
+  out[16] = yn(status === 'PEN');
+  return out;
+};
+
 // ── Palpite da Sorte (Brasil x Escócia) — feature isolada, não toca em "matches" ──
 // Reaproveita os fixtures que a Etapa 1 (live) e Etapa 2 (por data) já buscam pra
 // detectar esse jogo específico sem gastar requisição extra na API-Football.
@@ -218,17 +235,33 @@ const espnFindAndFetchEvents = async (matchDate, nameA, nameB) => {
           const sum = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/summary?event=${ev.id}`);
           if (!sum.ok) return null;
           const sd = await sum.json();
-          const events = [];
-          for (const play of (sd.plays || [])) {
-            const tt = (play.type?.text || '').toLowerCase();
-            const tid = play.team?.id || null;
-            const el  = play.clock?.value ? Math.ceil(play.clock.value / 60) : 45;
-            if (play.scoringPlay || tt.includes('goal')) {
-              events.push({ type:'Goal', detail: tt.includes('own')?'Own Goal':tt.includes('pen')?'Penalty':'Normal Goal', team:{id:tid}, time:{elapsed:el,extra:null} });
-            } else if (tt.includes('red')) {
-              events.push({ type:'Card', detail: tt.includes('yellow')?'Yellow Red Card':'Red Card', team:{id:tid}, time:{elapsed:el,extra:null} });
-            } else if (tt.includes('yellow')||tt.includes('caution')||tt.includes('booking')) {
-              events.push({ type:'Card', detail:'Yellow Card', team:{id:tid}, time:{elapsed:el,extra:null} });
+          // Fonte principal: header.competitions[0].details (gols/cartões), que vem
+          // preenchido mesmo quando "plays"/"keyPlays" estão vazios.
+          const details = sd.header?.competitions?.[0]?.details || [];
+          let events = [];
+          if (details.length) {
+            events = details.map(d => {
+              const elapsed = Math.ceil((d.clock?.value || 0) / 60);
+              const extra = d.addedClock?.value > 0 ? d.addedClock.value : null;
+              const team = { id: d.team?.id || null };
+              const time = { elapsed, extra };
+              if (d.scoringPlay) return { type:'Goal', detail: d.ownGoal?'Own Goal':d.penaltyKick?'Penalty':'Normal Goal', team, time };
+              if (d.redCard) return { type:'Card', detail: d.yellowCard?'Yellow Red Card':'Red Card', team, time };
+              if (d.yellowCard) return { type:'Card', detail:'Yellow Card', team, time };
+              return null;
+            }).filter(Boolean);
+          } else {
+            for (const play of (sd.plays || [])) {
+              const tt = (play.type?.text || '').toLowerCase();
+              const tid = play.team?.id || null;
+              const el  = play.clock?.value ? Math.ceil(play.clock.value / 60) : 45;
+              if (play.scoringPlay || tt.includes('goal')) {
+                events.push({ type:'Goal', detail: tt.includes('own')?'Own Goal':tt.includes('pen')?'Penalty':'Normal Goal', team:{id:tid}, time:{elapsed:el,extra:null} });
+              } else if (tt.includes('red')) {
+                events.push({ type:'Card', detail: tt.includes('yellow')?'Yellow Red Card':'Red Card', team:{id:tid}, time:{elapsed:el,extra:null} });
+              } else if (tt.includes('yellow')||tt.includes('caution')||tt.includes('booking')) {
+                events.push({ type:'Card', detail:'Yellow Card', team:{id:tid}, time:{elapsed:el,extra:null} });
+              }
             }
           }
           console.log(`[sync-scores] ESPN events para ${nameA} vs ${nameB}: ${events.length} (liga=${league})`);
@@ -328,7 +361,12 @@ const autoValidateExtras = async (supabase, match, scoreA, scoreB, afFixtureId) 
       return;
     }
 
-    const results = buildResults(events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB);
+    const results = events.length > 0
+      ? buildResults(events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB)
+      : buildScoreOnlyResults(scoreA, scoreB, status);
+    if (events.length === 0) {
+      console.log(`[sync-scores] extras: jogo ${match.id} encontrado mas sem eventos — validando só pelo placar (${Object.keys(results).length}/16)`);
+    }
     for (const [typeId, result] of Object.entries(results)) {
       await supabase.from('extra_results').upsert({
         match_id: match.id, extra_type_id: parseInt(typeId),

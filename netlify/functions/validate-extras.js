@@ -49,6 +49,21 @@ const ESPN_ABBR = {
 
 const yn = cond => ({ answer: cond ? 'yes' : 'no' });
 
+// Quando a fixture é achada mas não vem nenhum evento (gol/cartão), não dá pra
+// afirmar que "nada aconteceu" — valida só o que é dedutível pelo placar final.
+const buildScoreOnlyResults = (scoreA, scoreB, status) => {
+  const out = {};
+  if (scoreA > 0 && scoreB === 0) out[3] = { team: 'A' };
+  else if (scoreB > 0 && scoreA === 0) out[3] = { team: 'B' };
+  else if (scoreA === 0 && scoreB === 0) out[3] = { team: 'none' };
+  if (scoreA === 0) out[4] = { answer: 'no' };
+  if (scoreB === 0) out[5] = { answer: 'no' };
+  out[12] = yn(scoreA > 0 && scoreB > 0);
+  out[15] = yn(status === 'AET' || status === 'PEN');
+  out[16] = yn(status === 'PEN');
+  return out;
+};
+
 const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB) => {
   const teamAId = homeIsTeamA ? homeTeamId : awayTeamId;
   const teamBId = homeIsTeamA ? awayTeamId : homeTeamId;
@@ -206,10 +221,28 @@ const findViaESPN = async (matchDate, nameA, nameB) => {
 };
 
 // ── ESPN summary → events ─────────────────────────────────────────────────────
+// Fonte principal: header.competitions[0].details, que vem preenchido com gols e
+// cartões mesmo quando "plays"/"keyPlays" estão vazios (comum em competições sem
+// cobertura de texto ao vivo completa).
 const fetchESPNEvents = async (eventId, league = 'fifa.worldcup') => {
   const r = await fetch(`${ESPN_SUMMARY_BASE}/${league}/summary?event=${eventId}`);
   if (!r.ok) return [];
   const data = await r.json();
+
+  const details = data.header?.competitions?.[0]?.details || [];
+  if (details.length) {
+    return details.map(d => {
+      const elapsed = Math.ceil((d.clock?.value || 0) / 60);
+      const extra = d.addedClock?.value > 0 ? d.addedClock.value : null;
+      const team = { id: d.team?.id || null };
+      const time = { elapsed, extra };
+      if (d.scoringPlay) return { type:'Goal', detail: d.ownGoal?'Own Goal':d.penaltyKick?'Penalty':'Normal Goal', team, time };
+      if (d.redCard) return { type:'Card', detail: d.yellowCard?'Yellow Red Card':'Red Card', team, time };
+      if (d.yellowCard) return { type:'Card', detail:'Yellow Card', team, time };
+      return null;
+    }).filter(Boolean);
+  }
+
   const events = [];
   for (const play of (data.plays || [])) {
     const tt  = (play.type?.text || play.type?.name || '').toLowerCase();
@@ -274,28 +307,10 @@ exports.handler = async (event) => {
   if (!info) {
     console.warn('[validate-extras] Nenhuma API encontrou o jogo — validando pelo placar');
     const status = match.match_status || 'FT';
-    // Apenas as perguntas com resposta certa pelo placar/status
-    const scoreResults = {
-      // Primeiro Time a Marcar: se só um time marcou, é ele; 0×0 = nenhum
-      3: scoreA > 0 && scoreB === 0 ? { team:'A' }
-       : scoreB > 0 && scoreA === 0 ? { team:'B' }
-       : scoreA === 0 && scoreB === 0 ? { team:'none' }
-       : null,
-      // Haiti marcou no 1T: impossível se Haiti não marcou nada
-      4: scoreA === 0 ? { answer:'no' } : null,
-      // Escócia marcou no 1T: impossível se Escócia não marcou nada
-      5: scoreB === 0 ? { answer:'no' } : null,
-      // Ambos marcam
-      12: { answer: scoreA > 0 && scoreB > 0 ? 'yes' : 'no' },
-      // Prorrogação
-      15: { answer: status === 'AET' || status === 'PEN' ? 'yes' : 'no' },
-      // Pênaltis
-      16: { answer: status === 'PEN' ? 'yes' : 'no' },
-    };
+    const scoreResults = buildScoreOnlyResults(scoreA, scoreB, status);
 
     const validated = [];
     for (const [typeIdStr, result] of Object.entries(scoreResults)) {
-      if (!result) continue; // null = inconclusivo, pula
       const typeId = parseInt(typeIdStr);
       const { error } = await supabase.from('extra_results').upsert(
         { match_id: matchId, extra_type_id: typeId, official_result: result, is_validated: true, validated_at: new Date().toISOString(), validated_by: null },
@@ -324,7 +339,15 @@ exports.handler = async (event) => {
     events = await fetchESPNEvents(info.eventId, info.league || 'fifa.worldcup');
   }
 
-  const results = buildResults(events, match.match_status || 'FT', info.homeIsTeamA, info.homeTeamId, info.awayTeamId, scoreA, scoreB);
+  const matchStatus = match.match_status || 'FT';
+  // Fixture encontrada mas sem eventos = não dá pra confirmar gol/cartão por tempo;
+  // valida só o que o placar garante, em vez de assumir "não aconteceu nada".
+  const results = events.length > 0
+    ? buildResults(events, matchStatus, info.homeIsTeamA, info.homeTeamId, info.awayTeamId, scoreA, scoreB)
+    : buildScoreOnlyResults(scoreA, scoreB, matchStatus);
+  if (events.length === 0) {
+    console.warn(`[validate-extras] Fixture encontrada via ${info.source} mas sem eventos — validando só pelo placar (${Object.keys(results).length}/16)`);
+  }
   console.log('[validate-extras] Resultados:', JSON.stringify(results));
 
   const validated = [];
@@ -344,5 +367,8 @@ exports.handler = async (event) => {
   }
 
   console.log(`[validate-extras] ${validated.length}/16 inseridos`);
-  return { statusCode:200, headers, body: JSON.stringify({ validated: validated.length, source: info.source, events: events.length }) };
+  return { statusCode:200, headers, body: JSON.stringify({
+    validated: validated.length, source: info.source, events: events.length,
+    ...(events.length === 0 ? { warning: `Jogo encontrado mas sem eventos retornados. ${validated.length}/16 validados pelo placar. Tente novamente em alguns minutos ou valide os demais manualmente.` } : {}),
+  }) };
 };

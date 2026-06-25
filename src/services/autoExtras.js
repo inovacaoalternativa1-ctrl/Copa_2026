@@ -122,11 +122,32 @@ const findFixtureESPN = async (matchDate, teamA, teamB) => {
   return null;
 };
 
-// Converte plays da ESPN para o formato esperado por buildResults
+// Converte os eventos da ESPN pro formato esperado por buildResults.
+// Fonte principal: header.competitions[0].details (gols/cartões com time e jogador),
+// que costuma vir preenchido mesmo quando "plays"/"keyPlays" vêm vazios (comum em
+// competições sem cobertura de texto ao vivo completa).
 const fetchESPNEvents = async (eventId, homeTeamId, awayTeamId) => {
   const r = await fetch(`${ESPN_BASE}/summary?event=${eventId}`);
   if (!r.ok) return [];
   const data = await r.json();
+  const details = data.header?.competitions?.[0]?.details || [];
+
+  if (details.length) {
+    return details.map(d => {
+      const elapsed = Math.ceil((d.clock?.value || 0) / 60);
+      const extra = d.addedClock?.value > 0 ? d.addedClock.value : null;
+      const team = { id: d.team?.id || null };
+      const time = { elapsed, extra };
+      if (d.scoringPlay) {
+        return { type: 'Goal', detail: d.ownGoal ? 'Own Goal' : d.penaltyKick ? 'Penalty' : 'Normal Goal', team, time };
+      }
+      if (d.redCard) return { type: 'Card', detail: d.yellowCard ? 'Yellow Red Card' : 'Red Card', team, time };
+      if (d.yellowCard) return { type: 'Card', detail: 'Yellow Card', team, time };
+      return null;
+    }).filter(Boolean);
+  }
+
+  // Fallback: plays/keyPlays (texto de jogo a jogo), quando details não vem preenchido.
   const plays = data.plays || [];
   const events = [];
   for (const play of plays) {
@@ -217,6 +238,23 @@ const buildResults = (events, status, homeIsTeamA, homeTeamId, awayTeamId, score
   };
 };
 
+// Quando a API encontra o jogo mas não retorna nenhum evento (gol/cartão), NÃO dá
+// pra afirmar que "nada aconteceu" — isso causaria falso "Não"/"Nenhum" pra extras
+// que na verdade aconteceram. Nesse caso só validamos o que é dedutível pelo placar
+// final (que sempre temos), deixando o resto pendente pra validação manual/retry.
+const buildScoreOnlyResults = (scoreA, scoreB, status) => {
+  const out = {};
+  if (scoreA > 0 && scoreB === 0) out[3] = { team: 'A' };
+  else if (scoreB > 0 && scoreA === 0) out[3] = { team: 'B' };
+  else if (scoreA === 0 && scoreB === 0) out[3] = { team: 'none' };
+  if (scoreA === 0) out[4] = { answer: 'no' };
+  if (scoreB === 0) out[5] = { answer: 'no' };
+  out[12] = yn(scoreA > 0 && scoreB > 0);
+  out[15] = yn(status === 'AET' || status === 'PEN');
+  out[16] = yn(status === 'PEN');
+  return out;
+};
+
 /**
  * Automatically validates all detectable extras for a finished match.
  * Call this right after adminSetMatchResult succeeds.
@@ -254,7 +292,14 @@ export const autoValidateMatchExtras = async (supabase, match, scoreA, scoreB, a
 
     const status = info.status || 'FT';
 
-    const results = buildResults(events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB);
+    // Sem eventos = não dá pra confirmar gols/cartões por tempo; valida só pelo placar.
+    const results = events.length > 0
+      ? buildResults(events, status, homeIsTeamA, homeTeamId, awayTeamId, scoreA, scoreB)
+      : buildScoreOnlyResults(scoreA, scoreB, status);
+
+    if (events.length === 0) {
+      console.warn(`[autoExtras] Jogo ${match.id}: fixture encontrado via ${source} mas sem eventos retornados — validando só pelo placar (${Object.keys(results).length}/16).`);
+    }
 
     const validated = [];
     const skipped   = [];
