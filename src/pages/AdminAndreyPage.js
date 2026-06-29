@@ -139,7 +139,7 @@ export default function AdminAndreyPage() {
     setGiving(false);
   };
 
-  // Apuração automática do Palpite da Sorte (Brasil x Escócia)
+  // Apuração automática do Palpite da Sorte (Brasil x Japão)
   const [luckyDetecting, setLuckyDetecting] = useState(false);
   const [luckyError, setLuckyError] = useState('');
   const [luckyPreview, setLuckyPreview] = useState(null);
@@ -167,10 +167,17 @@ export default function AdminAndreyPage() {
         redCard: result.redCard,
         yellowCard: result.yellowCard,
         yellowTeam: result.yellowTeam || '',
+        firstHalfGoal: result.firstHalfGoal,
+        secondHalfGoal: result.secondHalfGoal,
+        bothScore: result.bothScore,
+        ownGoal: result.ownGoal,
+        extraTime: result.extraTime,
+        penaltyShootout: result.penaltyShootout,
         isFinished: result.isFinished,
         status: result.status,
         scorerNameRaw: result.scorerNameRaw,
         scorerMatched: result.scorerMatched,
+        eventsFound: result.eventsFound,
       });
     } catch (e) {
       setLuckyError(e.message || 'Erro ao buscar resultado na API.');
@@ -190,6 +197,12 @@ export default function AdminAndreyPage() {
       redCard: false,
       yellowCard: false,
       yellowTeam: '',
+      firstHalfGoal: false,
+      secondHalfGoal: false,
+      bothScore: false,
+      ownGoal: false,
+      extraTime: false,
+      penaltyShootout: false,
       isFinished: true,
       status: 'Preenchimento manual',
       scorerNameRaw: null,
@@ -212,6 +225,12 @@ export default function AdminAndreyPage() {
       redCard: luckyPreview.redCard,
       yellowCard: luckyPreview.yellowCard,
       yellowTeam: luckyPreview.yellowTeam,
+      firstHalfGoal: luckyPreview.firstHalfGoal,
+      secondHalfGoal: luckyPreview.secondHalfGoal,
+      bothScore: luckyPreview.bothScore,
+      ownGoal: luckyPreview.ownGoal,
+      extraTime: luckyPreview.extraTime,
+      penaltyShootout: luckyPreview.penaltyShootout,
       isFinished: luckyPreview.isFinished,
     });
     setLuckySaving(false);
@@ -350,7 +369,7 @@ export default function AdminAndreyPage() {
       </div>
 
       <div className="card andrey-tool-card">
-        <h3 className="section-title">🍀 Apurar Palpite da Sorte (Brasil x Escócia)</h3>
+        <h3 className="section-title">🍀 Apurar Palpite da Sorte (Brasil x Japão)</h3>
         <p className="andrey-tool-hint">
           Busca o resultado real na API de futebol e calcula a pontuação de todo mundo automaticamente.
         </p>
@@ -379,9 +398,16 @@ export default function AdminAndreyPage() {
               Status do jogo na API: <strong>{luckyPreview.status}</strong>
               {!luckyPreview.isFinished && ' — jogo ainda não terminou, confira antes de confirmar.'}
             </p>
+            {luckyPreview.eventsFound === false && (
+              <div className="alert alert-error" style={{ marginBottom: 12 }}>
+                ⚠️ Não consegui achar os eventos do jogo (gols/cartões) em nenhuma fonte ainda — os campos
+                abaixo de pênalti, cartão, gol no 1º/2º tempo e gol contra ficaram desmarcados por padrão.
+                Confira o jogo de verdade antes de confirmar, ou tente "🔄 Verificar resultado" de novo mais tarde.
+              </div>
+            )}
 
             <div className="form-group">
-              <label>Placar (Brasil × Escócia)</label>
+              <label>Placar (Brasil × Japão)</label>
               <div className="andrey-score-row">
                 <input type="number" min="0" value={luckyPreview.scoreA}
                   onChange={e => updateLuckyPreview('scoreA', e.target.value)} />
@@ -396,7 +422,7 @@ export default function AdminAndreyPage() {
               <select value={luckyPreview.firstTeam} onChange={e => updateLuckyPreview('firstTeam', e.target.value)}>
                 <option value="">—</option>
                 <option value="brasil">Brasil</option>
-                <option value="escocia">Escócia</option>
+                <option value="japao">Japão</option>
               </select>
             </div>
 
@@ -424,6 +450,30 @@ export default function AdminAndreyPage() {
                 <input type="checkbox" checked={!!luckyPreview.yellowCard}
                   onChange={e => updateLuckyPreview('yellowCard', e.target.checked)} /> Houve cartão amarelo
               </label>
+              <label className="check-row">
+                <input type="checkbox" checked={!!luckyPreview.firstHalfGoal}
+                  onChange={e => updateLuckyPreview('firstHalfGoal', e.target.checked)} /> Houve gol no 1º tempo
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={!!luckyPreview.secondHalfGoal}
+                  onChange={e => updateLuckyPreview('secondHalfGoal', e.target.checked)} /> Houve gol no 2º tempo
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={!!luckyPreview.bothScore}
+                  onChange={e => updateLuckyPreview('bothScore', e.target.checked)} /> Os dois times marcaram
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={!!luckyPreview.ownGoal}
+                  onChange={e => updateLuckyPreview('ownGoal', e.target.checked)} /> Houve gol contra
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={!!luckyPreview.extraTime}
+                  onChange={e => updateLuckyPreview('extraTime', e.target.checked)} /> Foi pra prorrogação
+              </label>
+              <label className="check-row">
+                <input type="checkbox" checked={!!luckyPreview.penaltyShootout}
+                  onChange={e => updateLuckyPreview('penaltyShootout', e.target.checked)} /> Houve disputa de pênaltis
+              </label>
             </div>
 
             <div className="form-group">
@@ -432,7 +482,7 @@ export default function AdminAndreyPage() {
                 <option value="">—</option>
                 <option value="brasil">Brasil</option>
                 <option value="ambos">Ambos</option>
-                <option value="escocia">Escócia</option>
+                <option value="japao">Japão</option>
               </select>
             </div>
 

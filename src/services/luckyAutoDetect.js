@@ -1,6 +1,6 @@
 import { ALL_PLAYERS } from '../data/luckyPlayers';
 
-// Busca o resultado real de Brasil x Escócia na API-Football e tenta casar o
+// Busca o resultado real de Brasil x Japão na API-Football e tenta casar o
 // artilheiro do primeiro gol com a nossa lista de convocados.
 // Não toca em nada do autoExtras.js / syncScores.js — é um fluxo isolado,
 // só pro Palpite da Sorte.
@@ -41,12 +41,14 @@ const findFixtureESPN = async (dateOffsetStart, dateOffsetEnd) => {
           const awayC = comp.competitors?.find(c => c.homeAway === 'away');
           if (!homeC || !awayC) continue;
           const names = [homeC.team.displayName, awayC.team.displayName];
-          if (!names.includes('Brazil') || !names.includes('Scotland')) continue;
+          if (!names.includes('Brazil') || !names.includes('Japan')) continue;
           return {
             eventId: ev.id,
+            league,
             kickoff: comp.date || ev.date,
             status: comp.status?.type?.completed ? 'FT' : (comp.status?.type?.state === 'in' ? 'LIVE' : 'NS'),
             homeIsBrasil: homeC.team.displayName === 'Brazil',
+            homeTeamIdESPN: homeC.team.id,
             scoreHome: parseInt(homeC.score || 0, 10),
             scoreAway: parseInt(awayC.score || 0, 10),
           };
@@ -55,6 +57,30 @@ const findFixtureESPN = async (dateOffsetStart, dateOffsetEnd) => {
     }
   }
   return null;
+};
+
+// Lê os eventos (gols/cartões) do jogo via ESPN summary, usada como fallback
+// quando a API-Football não tem os eventos (cota do plano free esgotada, etc).
+// Devolve já no formato normalizado { type, detail, teamKey: 'brasil'|'japao', elapsed, playerName }.
+const fetchESPNEventsForLucky = async (eventId, league, homeTeamIdESPN, homeIsBrasil) => {
+  try {
+    const sum = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/summary?event=${eventId}`);
+    if (!sum.ok) return [];
+    const sd = await sum.json();
+    const details = sd.header?.competitions?.[0]?.details || [];
+    return details.map(d => {
+      const isHome = d.team?.id === homeTeamIdESPN;
+      const teamKey = (isHome === homeIsBrasil) ? 'brasil' : 'japao';
+      const elapsed = Math.ceil((d.clock?.value || 0) / 60);
+      const playerName = d.athletesInvolved?.[0]?.displayName || d.participants?.[0]?.athlete?.displayName || null;
+      if (d.scoringPlay) return { type: 'Goal', detail: d.ownGoal ? 'Own Goal' : d.penaltyKick ? 'Penalty' : 'Normal Goal', teamKey, elapsed, playerName };
+      if (d.redCard) return { type: 'Card', detail: d.yellowCard ? 'Yellow Red Card' : 'Red Card', teamKey, elapsed, playerName };
+      if (d.yellowCard) return { type: 'Card', detail: 'Yellow Card', teamKey, elapsed, playerName };
+      return null;
+    }).filter(Boolean);
+  } catch {
+    return [];
+  }
 };
 
 // Acha o jogador da nossa lista cujo nome tem mais sobreposição de tokens
@@ -78,7 +104,7 @@ const KICKOFF_FOUND_TTL = 12 * 60 * 60 * 1000; // já achou a data do jogo — n
 const KICKOFF_NOT_FOUND_TTL = 15 * 60 * 1000;  // ainda não achou — tenta de novo em 15 min
 
 /**
- * Busca o horário oficial do jogo Brasil x Escócia (pra travar os palpites 1h antes).
+ * Busca o horário oficial do jogo Brasil x Japão (pra travar os palpites 1h antes).
  * Cacheia no localStorage pra não bater na API em toda visita à página.
  * Retorna o ISO string do kickoff, ou null se a API ainda não listou o jogo.
  */
@@ -109,7 +135,7 @@ export const getLuckyKickoff = async () => {
         const data = await apiFetch(`/fixtures?date=${date}`);
         const fixture = (data.response || []).find(f => {
           const h = f.teams.home.name, a = f.teams.away.name;
-          return (h === 'Brazil' && a === 'Scotland') || (h === 'Scotland' && a === 'Brazil');
+          return (h === 'Brazil' && a === 'Japan') || (h === 'Japan' && a === 'Brazil');
         });
         if (fixture) { kickoff = fixture.fixture.date; break; }
       }
@@ -131,7 +157,7 @@ const findFixture = async (dateStr) => {
     const fixture = (data.response || []).find(f => {
       const h = f.teams.home.name;
       const a = f.teams.away.name;
-      return (h === 'Brazil' && a === 'Scotland') || (h === 'Scotland' && a === 'Brazil');
+      return (h === 'Brazil' && a === 'Japan') || (h === 'Japan' && a === 'Brazil');
     });
     if (fixture) {
       return {
@@ -149,51 +175,96 @@ const findFixture = async (dateStr) => {
 };
 
 /**
- * Busca o jogo Brasil x Escócia na API-Football e monta um preview do resultado.
+ * Busca o jogo Brasil x Japão e monta um preview do resultado.
  * Não grava nada — só retorna os dados pra o admin revisar antes de confirmar.
+ * Tenta a API-Football primeiro; se ela não tiver os eventos (cota do plano
+ * free esgotada, etc), cai pro ESPN antes de assumir que "não aconteceu nada".
  */
 export const detectLuckyResult = async (referenceDate = new Date().toISOString()) => {
-  if (!API_KEY) throw new Error('REACT_APP_API_FOOTBALL_KEY não configurada');
+  let info = null;
+  if (API_KEY) {
+    try { info = await findFixture(referenceDate); } catch { /* tenta ESPN abaixo */ }
+  }
 
-  const info = await findFixture(referenceDate);
-  if (!info) throw new Error('Jogo Brasil x Escócia não encontrado na API ainda.');
+  let espnFixture = null;
+  if (!info) {
+    espnFixture = await findFixtureESPN(-3, 3);
+    if (!espnFixture) throw new Error('Jogo Brasil x Japão não encontrado em nenhuma fonte ainda.');
+    info = {
+      status: espnFixture.status,
+      homeIsBrasil: espnFixture.homeIsBrasil,
+      scoreHome: espnFixture.scoreHome,
+      scoreAway: espnFixture.scoreAway,
+    };
+  }
 
-  const brasilTeamId = info.homeIsBrasil ? info.homeTeamId : info.awayTeamId;
-  const escociaTeamId = info.homeIsBrasil ? info.awayTeamId : info.homeTeamId;
   const scoreA = info.homeIsBrasil ? info.scoreHome : info.scoreAway;
   const scoreB = info.homeIsBrasil ? info.scoreAway : info.scoreHome;
 
-  const eventsData = await apiFetch(`/fixtures/events?fixture=${info.fixtureId}`);
-  const events = eventsData.response || [];
+  // Eventos normalizados: { type, detail, teamKey: 'brasil'|'japao', elapsed, playerName }
+  let events = [];
+  if (info.fixtureId && API_KEY) {
+    try {
+      const eventsData = await apiFetch(`/fixtures/events?fixture=${info.fixtureId}`);
+      const brasilTeamId = info.homeIsBrasil ? info.homeTeamId : info.awayTeamId;
+      const japaoTeamId = info.homeIsBrasil ? info.awayTeamId : info.homeTeamId;
+      events = (eventsData.response || []).map(e => ({
+        type: e.type,
+        detail: e.detail,
+        teamKey: e.team.id === brasilTeamId ? 'brasil' : e.team.id === japaoTeamId ? 'japao' : null,
+        elapsed: e.time?.elapsed || 0,
+        playerName: e.player?.name || null,
+      }));
+    } catch { /* tenta ESPN abaixo */ }
+  }
 
+  if (events.length === 0) {
+    if (!espnFixture) espnFixture = await findFixtureESPN(-3, 3);
+    if (espnFixture) {
+      events = await fetchESPNEventsForLucky(espnFixture.eventId, espnFixture.league, espnFixture.homeTeamIdESPN, espnFixture.homeIsBrasil);
+    }
+  }
+
+  const eventsFound = events.length > 0;
   const goals = events.filter(e => e.type === 'Goal' && e.detail !== 'Missed Penalty');
   const firstGoal = goals[0];
-  const firstTeam = firstGoal
-    ? (firstGoal.team.id === brasilTeamId ? 'brasil' : firstGoal.team.id === escociaTeamId ? 'escocia' : null)
-    : null;
+  const firstTeam = firstGoal ? firstGoal.teamKey : null;
 
-  const scorerNameRaw = firstGoal?.player?.name || null;
-  const scorerTeam = firstTeam;
-  const scorerMatched = matchPlayer(scorerNameRaw, scorerTeam);
+  const scorerNameRaw = firstGoal?.playerName || null;
+  const scorerMatched = matchPlayer(scorerNameRaw, firstTeam);
 
   const hasPenalty = events.some(e => e.type === 'Goal' && (e.detail === 'Penalty' || e.detail === 'Missed Penalty'));
-  const isRed = (e) => e.type === 'Card' && (e.detail === 'Red Card' || e.detail === 'Yellow Red Card');
-  const hasRedCard = events.some(isRed);
-  const hasYellowBrasil = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.team.id === brasilTeamId);
-  const hasYellowEscocia = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.team.id === escociaTeamId);
-  const hasYellowCard = hasYellowBrasil || hasYellowEscocia;
-  const yellowTeam = hasYellowBrasil && hasYellowEscocia ? 'ambos' : hasYellowBrasil ? 'brasil' : hasYellowEscocia ? 'escocia' : null;
+  const hasRedCard = events.some(e => e.type === 'Card' && (e.detail === 'Red Card' || e.detail === 'Yellow Red Card'));
+  const hasYellowBrasil = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.teamKey === 'brasil');
+  const hasYellowJapao = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.teamKey === 'japao');
+  const hasYellowCard = hasYellowBrasil || hasYellowJapao;
+  const yellowTeam = hasYellowBrasil && hasYellowJapao ? 'ambos' : hasYellowBrasil ? 'brasil' : hasYellowJapao ? 'japao' : null;
+
+  const firstHalfGoal = goals.some(e => e.elapsed <= 45);
+  const secondHalfGoal = goals.some(e => e.elapsed > 45);
+  const ownGoal = events.some(e => e.type === 'Goal' && e.detail === 'Own Goal');
+
+  const bothScore = scoreA > 0 && scoreB > 0; // não depende dos eventos, vem direto do placar
+  const extraTime = info.status === 'AET' || info.status === 'PEN';
+  const penaltyShootout = info.status === 'PEN';
 
   return {
     status: info.status,
     isFinished: info.status === 'FT' || info.status === 'AET' || info.status === 'PEN',
+    eventsFound, // false = não achamos os eventos em nenhuma fonte; confira manualmente antes de confirmar
     scoreA, scoreB,
-    firstTeam,
+    firstTeam: eventsFound ? firstTeam : null,
     scorerNameRaw,
     scorerMatched, // { name, team } da nossa lista, ou null se não achou
-    penalty: hasPenalty,
-    redCard: hasRedCard,
-    yellowCard: hasYellowCard,
-    yellowTeam,
+    penalty: eventsFound ? hasPenalty : null,
+    redCard: eventsFound ? hasRedCard : null,
+    yellowCard: eventsFound ? hasYellowCard : null,
+    yellowTeam: eventsFound ? yellowTeam : null,
+    firstHalfGoal: eventsFound ? firstHalfGoal : null,
+    secondHalfGoal: eventsFound ? secondHalfGoal : null,
+    bothScore,
+    ownGoal: eventsFound ? ownGoal : null,
+    extraTime,
+    penaltyShootout,
   };
 };

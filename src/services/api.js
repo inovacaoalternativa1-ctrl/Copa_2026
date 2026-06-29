@@ -59,7 +59,7 @@ export const getPhaseRanking = (phase) =>
 export const adminGiveBonusPoints = (userId, amount) =>
   supabase.rpc('add_bonus_points', { p_user_id: userId, p_amount: amount });
 
-// ===== PALPITE DA SORTE (Brasil x Escócia) =====
+// ===== PALPITE DA SORTE (Brasil x Japão) =====
 export const getMyLuckyPrediction = (userId) =>
   supabase.from('lucky_predictions').select('*').eq('user_id', userId).maybeSingle();
 
@@ -83,6 +83,12 @@ export const setLuckyResult = (payload) =>
     p_yellow_card: payload.yellowCard,
     p_yellow_team: payload.yellowTeam,
     p_is_finished: payload.isFinished,
+    p_first_half_goal: payload.firstHalfGoal,
+    p_second_half_goal: payload.secondHalfGoal,
+    p_both_score: payload.bothScore,
+    p_own_goal: payload.ownGoal,
+    p_extra_time: payload.extraTime,
+    p_penalty_shootout: payload.penaltyShootout,
   });
 
 // ===== CHAT =====

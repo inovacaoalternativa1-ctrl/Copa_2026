@@ -98,12 +98,12 @@ const buildScoreOnlyResults = (scoreA, scoreB, status) => {
   return out;
 };
 
-// ── Palpite da Sorte (Brasil x Escócia) — feature isolada, não toca em "matches" ──
+// ── Palpite da Sorte (Brasil x Japão) — feature isolada, não toca em "matches" ──
 // Reaproveita os fixtures que a Etapa 1 (live) e Etapa 2 (por data) já buscam pra
 // detectar esse jogo específico sem gastar requisição extra na API-Football.
 const isLuckyFixture = (f) => {
   const h = f.teams.home.name, a = f.teams.away.name;
-  return (h === 'Brazil' && a === 'Scotland') || (h === 'Scotland' && a === 'Brazil');
+  return (h === 'Brazil' && a === 'Japan') || (h === 'Japan' && a === 'Brazil');
 };
 
 const LUCKY_PLAYERS = [
@@ -113,11 +113,11 @@ const LUCKY_PLAYERS = [
   ['Bruno Guimarães','brasil'],['Casemiro','brasil'],['Lucas Paquetá','brasil'],['Danilo Santos','brasil'],['Éderson','brasil'],['Fabinho','brasil'],
   ['Neymar Júnior','brasil'],['Raphinha','brasil'],['Vinícius Júnior','brasil'],['Endrick','brasil'],['Gabriel Martinelli','brasil'],
   ['Igor Thiago','brasil'],['Luiz Henrique','brasil'],['Matheus Cunha','brasil'],['Rayan','brasil'],
-  ['Angus Gunn','escocia'],['Craig Gordon','escocia'],['Liam Kelly','escocia'],
-  ['Andy Robertson','escocia'],['Grant Hanley','escocia'],['Jack Hendry','escocia'],['Nathan Patterson','escocia'],
-  ['Aaron Hickey','escocia'],['Anthony Ralston','escocia'],['Dominic Hyam','escocia'],['John Souttar','escocia'],['Kieran Tierney','escocia'],['Scott McKenna','escocia'],
-  ['John McGinn','escocia'],['Kenny McLean','escocia'],['Scott McTominay','escocia'],['Ben Gannon-Doak','escocia'],['Lewis Ferguson','escocia'],['Ryan Christie','escocia'],['Tyler Fletcher','escocia'],
-  ['Ché Adams','escocia'],['Lawrence Shankland','escocia'],['Ross Stewart','escocia'],['Findlay Curtis','escocia'],['George Hirst','escocia'],['Lyndon Dykes','escocia'],
+  ['Zion Suzuki','japao'],['Keisuke Osako','japao'],['Tomoki Hayakawa','japao'],
+  ['Yukinari Sugawara','japao'],['Ko Itakura','japao'],['Takehiro Tomiyasu','japao'],['Yuto Nagatomo','japao'],
+  ['Hiroki Ito','japao'],['Junnosuke Suzuki','japao'],['Ayumu Seko','japao'],['Shogo Taniguchi','japao'],['Tsuyoshi Watanabe','japao'],
+  ['Wataru Endo','japao'],['Ao Tanaka','japao'],['Daichi Kamada','japao'],['Ritsu Doan','japao'],['Junya Ito','japao'],['Daizen Maeda','japao'],['Yuito Suzuki','japao'],['Kaishu Sano','japao'],['Keito Nakamura','japao'],
+  ['Takefusa Kubo','japao'],['Ayase Ueda','japao'],['Koki Ogawa','japao'],['Kento Shiogai','japao'],['Keisuke Goto','japao'],
 ];
 const normLuckyName = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z\s]/g,'').trim();
 const matchLuckyPlayer = (apiName, team) => {
@@ -139,39 +139,76 @@ const finalizeLuckyResult = async (supabase, AF_KEY, fixture) => {
     const scoreA = homeIsBrasil ? fixture.goals.home : fixture.goals.away;
     const scoreB = homeIsBrasil ? fixture.goals.away : fixture.goals.home;
     const brasilTeamId = homeIsBrasil ? fixture.teams.home.id : fixture.teams.away.id;
-    const escociaTeamId = homeIsBrasil ? fixture.teams.away.id : fixture.teams.home.id;
+    const japaoTeamId = homeIsBrasil ? fixture.teams.away.id : fixture.teams.home.id;
 
+    // Eventos normalizados: { type, detail, teamKey: 'brasil'|'japao', elapsed, playerName }
     let events = [];
     if (fixtureId && AF_KEY) {
-      const evRes = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${fixtureId}`, { headers: { 'x-apisports-key': AF_KEY } });
-      if (evRes.ok) events = (await evRes.json()).response || [];
+      try {
+        const evRes = await fetch(`https://v3.football.api-sports.io/fixtures/events?fixture=${fixtureId}`, { headers: { 'x-apisports-key': AF_KEY } });
+        if (evRes.ok) {
+          events = ((await evRes.json()).response || []).map(e => ({
+            type: e.type,
+            detail: e.detail,
+            teamKey: e.team.id === brasilTeamId ? 'brasil' : e.team.id === japaoTeamId ? 'japao' : null,
+            elapsed: e.time?.elapsed || 0,
+            playerName: e.player?.name || null,
+          }));
+        }
+      } catch { /* tenta ESPN abaixo */ }
     }
+    // Fallback ESPN — a API-Football pode estar sem eventos (cota do plano free esgotada).
+    if (events.length === 0) {
+      events = await espnFindAndFetchLuckyEvents(fixture.fixture.date);
+    }
+    const eventsFound = events.length > 0;
 
     const goals = events.filter(e => e.type === 'Goal' && e.detail !== 'Missed Penalty');
     const firstGoal = goals[0];
-    const firstTeam = firstGoal
-      ? (firstGoal.team.id === brasilTeamId ? 'brasil' : firstGoal.team.id === escociaTeamId ? 'escocia' : null)
-      : null;
-    const scorerNameRaw = firstGoal?.player?.name || null;
+    const firstTeam = firstGoal ? firstGoal.teamKey : null;
+    const scorerNameRaw = firstGoal?.playerName || null;
     const scorerName = matchLuckyPlayer(scorerNameRaw, firstTeam) || scorerNameRaw;
 
     const hasPenalty = events.some(e => e.type === 'Goal' && (e.detail === 'Penalty' || e.detail === 'Missed Penalty'));
     const isRedLucky = e => e.type === 'Card' && (e.detail === 'Red Card' || e.detail === 'Yellow Red Card');
     const hasRedCard = events.some(isRedLucky);
-    const hasYellowBrasil = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.team.id === brasilTeamId);
-    const hasYellowEscocia = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.team.id === escociaTeamId);
-    const yellowTeam = hasYellowBrasil && hasYellowEscocia ? 'ambos' : hasYellowBrasil ? 'brasil' : hasYellowEscocia ? 'escocia' : null;
+    const hasYellowBrasil = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.teamKey === 'brasil');
+    const hasYellowJapao = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.teamKey === 'japao');
+    const yellowTeam = hasYellowBrasil && hasYellowJapao ? 'ambos' : hasYellowBrasil ? 'brasil' : hasYellowJapao ? 'japao' : null;
 
-    await supabase.from('lucky_result').upsert({
+    const firstHalfGoal = goals.some(e => e.elapsed <= 45);
+    const secondHalfGoal = goals.some(e => e.elapsed > 45);
+    const ownGoal = events.some(e => e.type === 'Goal' && e.detail === 'Own Goal');
+    const bothScore = scoreA > 0 && scoreB > 0; // não depende dos eventos, vem direto do placar
+    const status = fixture.fixture?.status?.short;
+    const extraTime = status === 'AET' || status === 'PEN';
+    const penaltyShootout = status === 'PEN';
+
+    // Se não achamos os eventos em NENHUMA fonte, não grava "não aconteceu" pros
+    // campos que dependem deles — só os que vêm direto do placar/status, pra não
+    // marcar palpite certo como errado (mesmo bug que já corrigimos nos outros jogos).
+    const upsertPayload = {
       id: 1,
       score_a: scoreA, score_b: scoreB,
-      first_team: firstTeam,
-      scorer_name: scorerName,
-      penalty: hasPenalty, red_card: hasRedCard,
-      yellow_card: hasYellowBrasil || hasYellowEscocia, yellow_team: yellowTeam,
+      both_score: bothScore,
+      extra_time: extraTime, penalty_shootout: penaltyShootout,
       is_finished: true, validated_at: new Date().toISOString(), validated_by: null,
-    });
-    console.log(`[sync-scores] Palpite da Sorte apurado automaticamente: ${scoreA}×${scoreB}, 1º gol: ${firstTeam} (${scorerName || 'não identificado'})`);
+    };
+    if (eventsFound) {
+      Object.assign(upsertPayload, {
+        first_team: firstTeam,
+        scorer_name: scorerName,
+        penalty: hasPenalty, red_card: hasRedCard,
+        yellow_card: hasYellowBrasil || hasYellowJapao, yellow_team: yellowTeam,
+        first_half_goal: firstHalfGoal, second_half_goal: secondHalfGoal,
+        own_goal: ownGoal,
+      });
+    } else {
+      console.warn('[sync-scores] Palpite da Sorte: eventos não encontrados em nenhuma fonte, gravando só o placar por agora.');
+    }
+
+    await supabase.from('lucky_result').upsert(upsertPayload);
+    console.log(`[sync-scores] Palpite da Sorte apurado automaticamente: ${scoreA}×${scoreB}, 1º gol: ${firstTeam || '?'} (${scorerName || 'não identificado'})`);
   } catch (e) {
     console.error('[sync-scores] erro ao apurar Palpite da Sorte:', e.message);
   }
@@ -271,6 +308,54 @@ const espnFindAndFetchEvents = async (matchDate, nameA, nameB) => {
     }
   }
   return null;
+};
+
+// Mesma busca acima, mas específica pro Palpite da Sorte: também extrai o nome
+// do jogador (necessário pra comparar com o palpite de "quem marca primeiro"),
+// que a espnFindAndFetchEvents genérica não guarda (não precisa pros outros jogos).
+const espnFindAndFetchLuckyEvents = async (matchDate) => {
+  const matchDateMs = new Date(matchDate).getTime();
+  const days = [0, -1, 1, -2].map(offset => {
+    const d = new Date(matchDateMs + offset * 86400000);
+    return d.toISOString().split('T')[0].replace(/-/g, '');
+  });
+  for (const league of ESPN_LEAGUES_FALLBACK) {
+    for (const ds of days) {
+      try {
+        const rs = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?dates=${ds}`);
+        if (!rs.ok) continue;
+        const data = await rs.json();
+        for (const ev of (data.events || [])) {
+          const comp = ev.competitions?.[0];
+          if (!comp) continue;
+          const homeC = comp.competitors?.find(c => c.homeAway === 'home');
+          const awayC = comp.competitors?.find(c => c.homeAway === 'away');
+          if (!homeC || !awayC) continue;
+          const names = [homeC.team.displayName, awayC.team.displayName];
+          if (!names.includes('Brazil') || !names.includes('Japan')) continue;
+          const homeIsBrasil = homeC.team.displayName === 'Brazil';
+          const homeTeamIdESPN = homeC.team.id;
+          const sum = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/summary?event=${ev.id}`);
+          if (!sum.ok) return [];
+          const sd = await sum.json();
+          const details = sd.header?.competitions?.[0]?.details || [];
+          const events = details.map(d => {
+            const isHome = d.team?.id === homeTeamIdESPN;
+            const teamKey = (isHome === homeIsBrasil) ? 'brasil' : 'japao';
+            const elapsed = Math.ceil((d.clock?.value || 0) / 60);
+            const playerName = d.athletesInvolved?.[0]?.displayName || d.participants?.[0]?.athlete?.displayName || null;
+            if (d.scoringPlay) return { type:'Goal', detail: d.ownGoal?'Own Goal':d.penaltyKick?'Penalty':'Normal Goal', teamKey, elapsed, playerName };
+            if (d.redCard) return { type:'Card', detail: d.yellowCard?'Yellow Red Card':'Red Card', teamKey, elapsed, playerName };
+            if (d.yellowCard) return { type:'Card', detail:'Yellow Card', teamKey, elapsed, playerName };
+            return null;
+          }).filter(Boolean);
+          console.log(`[sync-scores] ESPN events (Palpite da Sorte): ${events.length} (liga=${league})`);
+          return events;
+        }
+      } catch(e) { console.warn('[sync-scores] ESPN events (Palpite da Sorte) erro:', e.message); }
+    }
+  }
+  return [];
 };
 
 const autoValidateExtras = async (supabase, match, scoreA, scoreB, afFixtureId) => {
@@ -548,7 +633,7 @@ exports.handler = async () => {
     } catch(e) { console.warn('[sync] Etapa 2 erro:', e.message); }
   }
 
-  // ── Apuração automática do Palpite da Sorte (Brasil x Escócia) ───────────────
+  // ── Apuração automática do Palpite da Sorte (Brasil x Japão) ───────────────
   if (luckyFixtureFound) {
     await finalizeLuckyResult(supabase, AF_KEY, luckyFixtureFound);
   }

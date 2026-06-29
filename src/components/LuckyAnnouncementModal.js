@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getLuckyKickoff } from '../services/luckyAutoDetect';
 import './LuckyAnnouncementModal.css';
 
-const SEEN_KEY_PREFIX = 'copa_lucky_announcement_seen_v2_';
+const SEEN_KEY_PREFIX = 'copa_lucky_announcement_seen_v3_';
 const BR_COLORS = ['#009C3B', '#FFDF00', '#002776', '#FFFFFF'];
 
 const spawnConfetti = (container) => {
@@ -73,7 +73,7 @@ export default function LuckyAnnouncementModal() {
         <p className="la-teams">
           <img src="https://flagcdn.com/w40/br.png" alt="Brasil" className="la-flag" /> Brasil
           <span className="la-versus">×</span>
-          Escócia <img src="https://flagcdn.com/w40/gb-sct.png" alt="Escócia" className="la-flag" />
+          Japão <img src="https://flagcdn.com/w40/jp.png" alt="Japão" className="la-flag" />
         </p>
         <p className="la-text">
           Um palpite único e separado do ranking geral: placar exato, quem marca primeiro

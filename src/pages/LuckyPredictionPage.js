@@ -2,12 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getMyLuckyPrediction, upsertLuckyPrediction, getLuckyRanking } from '../services/api';
 import { getLuckyKickoff } from '../services/luckyAutoDetect';
-import { TEAM_BRASIL, TEAM_ESCOCIA, POSITION_LABELS } from '../data/luckyPlayers';
+import { TEAM_BRASIL, TEAM_JAPAO, POSITION_LABELS } from '../data/luckyPlayers';
 import './LuckyPredictionPage.css';
 
 const LOCK_MS_BEFORE_KICKOFF = 60 * 60 * 1000; // palpites travam 1h antes do jogo
 
-const POINTS = { score: 5, scorer: 3, firstTeam: 2, penalty: 0.03, redCard: 0.02, yellowCard: 0.01, yellowTeam: 0.1 };
+const POINTS = {
+  score: 5, scorer: 3, firstTeam: 2,
+  penalty: 0.03, redCard: 0.02, yellowCard: 0.01, yellowTeam: 0.1,
+  firstHalfGoal: 0.05, secondHalfGoal: 0.05, bothScore: 0.08, ownGoal: 0.05, extraTime: 0.05, penaltyShootout: 0.05,
+};
 const MEDALS = ['🥇', '🥈', '🥉'];
 
 const EXTRA_QUESTIONS = [
@@ -15,11 +19,17 @@ const EXTRA_QUESTIONS = [
   { key: 'redCard', label: 'Vai ter cartão vermelho no jogo?', points: POINTS.redCard, type: 'yesno' },
   { key: 'yellowCard', label: 'Vai ter cartão amarelo no jogo?', points: POINTS.yellowCard, type: 'yesno' },
   { key: 'yellowTeam', label: 'Qual seleção recebe cartão amarelo?', points: POINTS.yellowTeam, type: 'team3' },
+  { key: 'firstHalfGoal', label: 'Vai ter gol no 1º tempo?', points: POINTS.firstHalfGoal, type: 'yesno' },
+  { key: 'secondHalfGoal', label: 'Vai ter gol no 2º tempo?', points: POINTS.secondHalfGoal, type: 'yesno' },
+  { key: 'bothScore', label: 'Os dois times marcam?', points: POINTS.bothScore, type: 'yesno' },
+  { key: 'ownGoal', label: 'Vai ter gol contra no jogo?', points: POINTS.ownGoal, type: 'yesno' },
+  { key: 'extraTime', label: 'Vai pra prorrogação?', points: POINTS.extraTime, type: 'yesno' },
+  { key: 'penaltyShootout', label: 'Vai ter disputa de pênaltis?', points: POINTS.penaltyShootout, type: 'yesno' },
 ];
 
 const EXTRA_ANSWER_LABEL = (q, answer) => {
   if (q.type === 'team3') {
-    return answer === 'brasil' ? 'Brasil' : answer === 'escocia' ? 'Escócia' : 'Ambos os times';
+    return answer === 'brasil' ? 'Brasil' : answer === 'japao' ? 'Japão' : 'Ambos os times';
   }
   return answer === 'yes' ? 'Sim' : 'Não';
 };
@@ -34,6 +44,12 @@ const dbToSaved = (row) => ({
     redCard: row.red_card_answer || undefined,
     yellowCard: row.yellow_card_answer || undefined,
     yellowTeam: row.yellow_team_answer || undefined,
+    firstHalfGoal: row.first_half_goal_answer || undefined,
+    secondHalfGoal: row.second_half_goal_answer || undefined,
+    bothScore: row.both_score_answer || undefined,
+    ownGoal: row.own_goal_answer || undefined,
+    extraTime: row.extra_time_answer || undefined,
+    penaltyShootout: row.penalty_shootout_answer || undefined,
   },
 });
 
@@ -45,8 +61,8 @@ const getInitials = (name = '') => {
 
 // Bandeiras reais (flagcdn) — emojis de bandeira não renderizam corretamente no Windows.
 const Flag = ({ team, size = 20 }) => {
-  const src = team === 'brasil' ? 'https://flagcdn.com/w40/br.png' : 'https://flagcdn.com/w40/gb-sct.png';
-  const alt = team === 'brasil' ? 'Brasil' : 'Escócia';
+  const src = team === 'brasil' ? 'https://flagcdn.com/w40/br.png' : 'https://flagcdn.com/w40/jp.png';
+  const alt = team === 'brasil' ? 'Brasil' : 'Japão';
   return <img src={src} alt={alt} className="flag-img" style={{ width: size, height: Math.round(size * 0.75) }} />;
 };
 
@@ -140,7 +156,7 @@ export default function LuckyPredictionPage() {
     if (isLocked) { setError('Os palpites já estão encerrados — falta menos de 1h para o jogo.'); return; }
     if (scoreA === '' || scoreB === '') { setError('Informe o placar completo.'); return; }
     if (!/^\d+$/.test(scoreA) || !/^\d+$/.test(scoreB)) { setError('O placar deve ser número inteiro positivo.'); return; }
-    if (!firstTeam) { setError('Escolha quem marca primeiro: Brasil ou Escócia.'); return; }
+    if (!firstTeam) { setError('Escolha quem marca primeiro: Brasil ou Japão.'); return; }
     if (!scorer) { setError('Selecione o jogador que você acha que vai marcar primeiro.'); return; }
 
     setSaving(true);
@@ -155,6 +171,12 @@ export default function LuckyPredictionPage() {
       red_card_answer: extras.redCard || null,
       yellow_card_answer: extras.yellowCard || null,
       yellow_team_answer: extras.yellowTeam || null,
+      first_half_goal_answer: extras.firstHalfGoal || null,
+      second_half_goal_answer: extras.secondHalfGoal || null,
+      both_score_answer: extras.bothScore || null,
+      own_goal_answer: extras.ownGoal || null,
+      extra_time_answer: extras.extraTime || null,
+      penalty_shootout_answer: extras.penaltyShootout || null,
       updated_at: new Date().toISOString(),
     };
     const { error: upsertErr } = await upsertLuckyPrediction(row);
@@ -192,7 +214,7 @@ export default function LuckyPredictionPage() {
       </div>
 
       <div className="lucky-banner">
-        <strong><Flag team="brasil" size={26} /> Brasil × Escócia <Flag team="escocia" size={26} /></strong>
+        <strong><Flag team="brasil" size={26} /> Brasil × Japão <Flag team="japao" size={26} /></strong>
         <span>Palpite único — placar exato, quem marca primeiro e qual jogador marca primeiro.</span>
       </div>
 
@@ -215,11 +237,11 @@ export default function LuckyPredictionPage() {
           </div>
           <div className="lucky-confirm-row">
             <span>Marca primeiro:</span>
-            <strong><Flag team={saved.firstTeam} size={18} /> {saved.firstTeam === 'brasil' ? 'Brasil' : 'Escócia'} <span className="lucky-pts-badge">+{POINTS.firstTeam} pts</span></strong>
+            <strong><Flag team={saved.firstTeam} size={18} /> {saved.firstTeam === 'brasil' ? 'Brasil' : 'Japão'} <span className="lucky-pts-badge">+{POINTS.firstTeam} pts</span></strong>
           </div>
           <div className="lucky-confirm-row">
             <span>Jogador que marca primeiro:</span>
-            <strong>{saved.scorer.name} ({saved.scorer.team === 'brasil' ? 'Brasil' : 'Escócia'}) <span className="lucky-pts-badge">+{POINTS.scorer} pts</span></strong>
+            <strong>{saved.scorer.name} ({saved.scorer.team === 'brasil' ? 'Brasil' : 'Japão'}) <span className="lucky-pts-badge">+{POINTS.scorer} pts</span></strong>
           </div>
           {EXTRA_QUESTIONS.filter(q => saved.extras?.[q.key]).map(q => (
             <div className="lucky-confirm-row" key={q.key}>
@@ -263,7 +285,7 @@ export default function LuckyPredictionPage() {
               </div>
               <span className="lucky-score-sep">×</span>
               <div className="lucky-score-team">
-                <span><Flag team="escocia" /> Escócia</span>
+                <span><Flag team="japao" /> Japão</span>
                 <input type="number" min="0" max="20" value={scoreB} onChange={e => setScoreB(e.target.value)} className="lucky-score-input" placeholder="0" />
               </div>
             </div>
@@ -276,8 +298,8 @@ export default function LuckyPredictionPage() {
               <button className={`lucky-first-btn ${firstTeam === 'brasil' ? 'active' : ''}`} onClick={() => setFirstTeam('brasil')}>
                 <Flag team="brasil" size={22} /> Brasil
               </button>
-              <button className={`lucky-first-btn ${firstTeam === 'escocia' ? 'active' : ''}`} onClick={() => setFirstTeam('escocia')}>
-                <Flag team="escocia" size={22} /> Escócia
+              <button className={`lucky-first-btn ${firstTeam === 'japao' ? 'active' : ''}`} onClick={() => setFirstTeam('japao')}>
+                <Flag team="japao" size={22} /> Japão
               </button>
             </div>
           </div>
@@ -297,8 +319,8 @@ export default function LuckyPredictionPage() {
             )}
 
             <div className="lucky-pitch">
-              <div className="lucky-pitch-team-label top"><Flag team="escocia" size={18} /> Escócia</div>
-              {renderTeamBlock(TEAM_ESCOCIA, ['GK', 'DEF', 'MID', 'FWD'])}
+              <div className="lucky-pitch-team-label top"><Flag team="japao" size={18} /> Japão</div>
+              {renderTeamBlock(TEAM_JAPAO, ['GK', 'DEF', 'MID', 'FWD'])}
               <div className="lucky-pitch-midline" />
               {renderTeamBlock(TEAM_BRASIL, ['FWD', 'MID', 'DEF', 'GK'])}
               <div className="lucky-pitch-team-label bottom"><Flag team="brasil" size={18} /> Brasil</div>
@@ -327,8 +349,8 @@ export default function LuckyPredictionPage() {
                           <Flag team="brasil" size={14} /> Brasil
                         </button>
                         <button className={`choice ${extras[q.key] === 'ambos' ? 'active-yes' : ''}`} onClick={() => toggleExtra(q.key, 'ambos')}>Ambos</button>
-                        <button className={`choice ${extras[q.key] === 'escocia' ? 'active-yes' : ''}`} onClick={() => toggleExtra(q.key, 'escocia')}>
-                          <Flag team="escocia" size={14} /> Escócia
+                        <button className={`choice ${extras[q.key] === 'japao' ? 'active-yes' : ''}`} onClick={() => toggleExtra(q.key, 'japao')}>
+                          <Flag team="japao" size={14} /> Japão
                         </button>
                       </>
                     ) : (

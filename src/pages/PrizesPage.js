@@ -29,19 +29,21 @@ const LUCKY_PRIZES = [
   {
     position: 1, medal: '🥇', label: '1º Lugar', color: 'gold',
     items: [
-      { icon: '👕', text: 'Camisa do Brasil Techmetria + Vinho', img: '/images/lucky-prizes/primeiro-lugar.jpg' },
+      { icon: '🍺', text: 'Caixa de Heineken (Patrocínio Sanel)', img: '/images/lucky-prizes/primeiro-lugar.jpg', imgPosition: '50% 15%' },
+      { icon: '🍷', text: 'Vinho', img: null },
     ],
   },
   {
     position: 2, medal: '🥈', label: '2º Lugar', color: 'silver',
     items: [
-      { icon: '👕', text: 'Camisa Copa Alternativa 2026 + Vinho + Copo', img: '/images/lucky-prizes/segundo-lugar.jpg' },
+      { icon: '🎁', text: 'Kit Alternativa', img: null },
+      { icon: '🍷', text: 'Vinho Chileno', img: null },
     ],
   },
   {
     position: 3, medal: '🥉', label: '3º Lugar', color: 'bronze',
     items: [
-      { icon: '🧢', text: 'Boné + Copo Copa Alternativa 2026', img: '/images/lucky-prizes/terceiro-lugar.jpg' },
+      { icon: '🎁', text: 'Kit Alternativa', img: null },
     ],
   },
 ];
@@ -134,6 +136,7 @@ export default function PrizesPage() {
                   >
                     {item.img
                       ? <img src={item.img} alt={item.text} className="prize-card__item-img"
+                          style={item.imgPosition ? { objectPosition: item.imgPosition } : undefined}
                           onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                       : null}
                     <span className="prize-card__item-icon" style={{ display: item.img ? 'none' : 'flex' }}>{item.icon}</span>
@@ -153,7 +156,7 @@ export default function PrizesPage() {
       <div className="prizes-hero prizes-hero--lucky">
         <div className="prizes-trophy">🍀</div>
         <h1 className="prizes-title">Prêmios — Palpite da Sorte</h1>
-        <p className="prizes-subtitle">Ranking separado, exclusivo do palpite Brasil × Escócia</p>
+        <p className="prizes-subtitle">Ranking separado, exclusivo do palpite Brasil × Japão</p>
       </div>
 
       <div className="prizes-list">
@@ -179,6 +182,7 @@ export default function PrizesPage() {
                   >
                     {item.img
                       ? <img src={item.img} alt={item.text} className="prize-card__item-img"
+                          style={item.imgPosition ? { objectPosition: item.imgPosition } : undefined}
                           onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                       : null}
                     <span className="prize-card__item-icon" style={{ display: item.img ? 'none' : 'flex' }}>{item.icon}</span>
@@ -192,7 +196,7 @@ export default function PrizesPage() {
       </div>
 
       <p className="prizes-footer">
-        Vencedores definidos pelo resultado real do jogo Brasil × Escócia — ranking independente da Copa.
+        Vencedores definidos pelo resultado real do jogo Brasil × Japão — ranking independente da Copa.
       </p>
 
       {lightbox && (

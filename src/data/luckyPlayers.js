@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 // ESCALAÇÃO PROVISÓRIA — lista de convocados, posição estimada no campinho.
-// Fotos: Wikimedia Commons (verificadas uma a uma). Trocar pelos titulares
-// confirmados antes de liberar pra valer.
+// Fotos: Wikimedia Commons (verificadas uma a uma). Quem não tem foto
+// verificada usa avatar de iniciais.
 // Compartilhado entre LuckyPredictionPage (exibição) e luckyAutoDetect
 // (casar o nome do artilheiro vindo da API com o nome oficial daqui).
 // ─────────────────────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ export const PHOTOS = {
   'Gabriel Magalhães': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Gabriel_Magalhaes_Brazil_V_Morocco_13_June_2026-132_%28cropped%29.jpg/330px-Gabriel_Magalhaes_Brazil_V_Morocco_13_June_2026-132_%28cropped%29.jpg',
   'Ibañez': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Ibanez_Brazil_V_Morocco_13_June_2026-66.jpg/330px-Ibanez_Brazil_V_Morocco_13_June_2026-66.jpg',
   'Léo Pereira': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Leo_Pereira_Brazil_V_Morocco_13_June_2026-136_%28cropped%29.jpg/330px-Leo_Pereira_Brazil_V_Morocco_13_June_2026-136_%28cropped%29.jpg',
-  'Danilo Santos': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Danilo_Sousa_Brazil_V_Morocco_13_June_2026-140_%28cropped%29.jpg/330px-Danilo_Sousa_Brazil_V_Morocco_13_June_2026-140_%28cropped%29.jpg',
+  'Danilo Santos': 'https://upload.wikimedia.org/wikipedia/commons/5/5b/Danilo_Santos_Brazil_V_Morocco_13_June_2026-140_%28cropped%29.jpg',
   'Fabinho': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Fabinho_Brazil_V_Morocco_13_June_2026-70.jpg/330px-Fabinho_Brazil_V_Morocco_13_June_2026-70.jpg',
   'Endrick': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Team_Brazil_at_2026_FIFA_World_Cup_by_YantsImages_%28Endrick%29.jpg/330px-Team_Brazil_at_2026_FIFA_World_Cup_by_YantsImages_%28Endrick%29.jpg',
   'Gabriel Martinelli': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/81/Gabriel_Martinelli_Brazil_V_Morocco_13_June_2026-144.jpg/330px-Gabriel_Martinelli_Brazil_V_Morocco_13_June_2026-144.jpg',
@@ -35,32 +35,32 @@ export const PHOTOS = {
   'Igor Thiago': '/players/igor-thiago.jpg',
   'Éderson': '/players/ederson-atalanta.jpg',
   'Rayan': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Rayan_Brazil_V_Morocco_13_June_2026-142.jpg/330px-Rayan_Brazil_V_Morocco_13_June_2026-142.jpg',
-  'Angus Gunn': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Angus_Gunn_Scotland_v_Bolivia_6_June_2026-42.jpg/330px-Angus_Gunn_Scotland_v_Bolivia_6_June_2026-42.jpg',
-  'Nathan Patterson': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Nathan_Patterson_Scotland_v_Bolivia_6_June_2026-58.jpg/330px-Nathan_Patterson_Scotland_v_Bolivia_6_June_2026-58.jpg',
-  'Grant Hanley': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Grant_Hanley_Scotland_v_Bolivia_6_June_2026-39_%28cropped%29.jpg/330px-Grant_Hanley_Scotland_v_Bolivia_6_June_2026-39_%28cropped%29.jpg',
-  'Jack Hendry': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/Jack_Hendry_Scotland_v_Bolivia_6_June_2026-35.jpg/330px-Jack_Hendry_Scotland_v_Bolivia_6_June_2026-35.jpg',
-  'Andy Robertson': 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Andy_Robertson_Scotland_v_Bolivia_6_June_2026-43.jpg/330px-Andy_Robertson_Scotland_v_Bolivia_6_June_2026-43.jpg',
-  'Scott McTominay': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/Scott_McTominay_Scotland_v_Bolivia_6_June_2026-41.jpg/330px-Scott_McTominay_Scotland_v_Bolivia_6_June_2026-41.jpg',
-  'John McGinn': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/John_McGinn_Scotland_v_Bolivia_6_June_2026-2.jpg/330px-John_McGinn_Scotland_v_Bolivia_6_June_2026-2.jpg',
-  'Kenny McLean': 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/50/Kenny_McLean_Scotland_v_Bolivia_6_June_2026-177_%28cropped%29.jpg/330px-Kenny_McLean_Scotland_v_Bolivia_6_June_2026-177_%28cropped%29.jpg',
-  'Ché Adams': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Che_Adams_Scotland_v_Bolivia_6_June_2026-37_%28cropped%29.jpg/330px-Che_Adams_Scotland_v_Bolivia_6_June_2026-37_%28cropped%29.jpg',
-  'Ryan Christie': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Ryan_Christie_Bournemouth_%28cropped%29.png/330px-Ryan_Christie_Bournemouth_%28cropped%29.png',
-  'Lawrence Shankland': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/39/Lawrence_Shankland_Scotland_v_Bolivia_6_June_2026-66.jpg/330px-Lawrence_Shankland_Scotland_v_Bolivia_6_June_2026-66.jpg',
-  'Craig Gordon': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/Craig_Gordon_Scotland_v_Bolivia_6_June_2026-19.jpg/330px-Craig_Gordon_Scotland_v_Bolivia_6_June_2026-19.jpg',
-  'Liam Kelly': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Liam_Kelly_Scotland_v_Bolivia_6_June_2026-20.jpg/330px-Liam_Kelly_Scotland_v_Bolivia_6_June_2026-20.jpg',
-  'Aaron Hickey': 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Aaron_Hickey_Scotland_v_Bolivia_6_June_2026-87_%28cropped%29.jpg/330px-Aaron_Hickey_Scotland_v_Bolivia_6_June_2026-87_%28cropped%29.jpg',
-  'Anthony Ralston': 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Anthony_Ralston_Scotland_v_Bolivia_6_June_2026-9_%28cropped%29.jpg/330px-Anthony_Ralston_Scotland_v_Bolivia_6_June_2026-9_%28cropped%29.jpg',
-  'Dominic Hyam': 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8d/Dominic_Hyam_Scotland_v_Bolivia_6_June_2026-59.jpg/330px-Dominic_Hyam_Scotland_v_Bolivia_6_June_2026-59.jpg',
-  'John Souttar': 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/02/John_Souttar_Scotland_v_Bolivia_6_June_2026-163.jpg/330px-John_Souttar_Scotland_v_Bolivia_6_June_2026-163.jpg',
-  'Kieran Tierney': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Kieran_Tierney_Scotland_v_Bolivia_6_June_2026-6.jpg/330px-Kieran_Tierney_Scotland_v_Bolivia_6_June_2026-6.jpg',
-  'Scott McKenna': 'https://upload.wikimedia.org/wikipedia/commons/6/69/First_Minister_meets_with_Scottish_National_Football_Team_-_55168603663_%28Scott_McKenna_cropped%29.jpg',
-  'Ben Gannon-Doak': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Ben_Gannon-Doak_Scotland_v_Bolivia_6_June_2026-68_%28cropped%29.jpg/330px-Ben_Gannon-Doak_Scotland_v_Bolivia_6_June_2026-68_%28cropped%29.jpg',
-  'Lewis Ferguson': 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/78/Lewis_Ferguson_Scotland_v_Bolivia_6_June_2026-52.jpg/330px-Lewis_Ferguson_Scotland_v_Bolivia_6_June_2026-52.jpg',
-  'Tyler Fletcher': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Tyler_Fletcher_Scotland_v_Bolivia_6_June_2026-4.jpg/330px-Tyler_Fletcher_Scotland_v_Bolivia_6_June_2026-4.jpg',
-  'Findlay Curtis': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d6/Findlay_Curtis_Scotland_v_Bolivia_6_June_2026-56.jpg/330px-Findlay_Curtis_Scotland_v_Bolivia_6_June_2026-56.jpg',
-  'George Hirst': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/George_Hirst_Scotland_v_Bolivia_6_June_2026-7.jpg/330px-George_Hirst_Scotland_v_Bolivia_6_June_2026-7.jpg',
-  'Lyndon Dykes': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Lyndon_Dykes_Scotland_v_Bolivia_6_June_2026-65.jpg/330px-Lyndon_Dykes_Scotland_v_Bolivia_6_June_2026-65.jpg',
-  'Ross Stewart': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Ross_Stewart_Scotland_v_Bolivia_6_June_2026-8.jpg/330px-Ross_Stewart_Scotland_v_Bolivia_6_June_2026-8.jpg',
+  'Zion Suzuki': 'https://upload.wikimedia.org/wikipedia/commons/7/7b/ZION_SUZUKI_-_JPN_vs_THA_-_Friendly_Match_-_2024.01.01.jpg',
+  'Takefusa Kubo': 'https://upload.wikimedia.org/wikipedia/commons/5/52/Takefusa_Kubo_1053.jpg',
+  'Wataru Endo': 'https://upload.wikimedia.org/wikipedia/commons/3/36/Wataru_End%C5%8D_06042025_%281%29.jpg',
+  'Ko Itakura': 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Ko_Itakura_%28cropped%29.jpg',
+  'Takehiro Tomiyasu': 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Takehiro_Tomiyasu.jpg',
+  'Ritsu Doan': 'https://upload.wikimedia.org/wikipedia/commons/a/ae/Ritsu_D%C5%8Dan_2024_%28cropped%29.jpg',
+  'Daichi Kamada': 'https://upload.wikimedia.org/wikipedia/commons/e/e4/2022128173756_2022-05-08_Fussball_Eintracht_Frankfurt_vs_Borussia_M%C3%B6nchengladbach_-_Sven_-_1D_X_MK_II_-_0725_-_AK8I7460_%28Daichi_Kamada_cropped%29.jpg',
+  'Yuto Nagatomo': 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Yuto_Nagatomo_in_2018.jpg',
+  'Junya Ito': 'https://upload.wikimedia.org/wikipedia/commons/5/57/Ito_asse_sr_2425.png',
+  'Ayase Ueda': 'https://upload.wikimedia.org/wikipedia/commons/2/2f/AyaseUedaFrontPriorMatchCercleVsOHV_%28cropped%29.jpg',
+  'Ao Tanaka': 'https://upload.wikimedia.org/wikipedia/commons/f/f6/Ao_Tanaka_13092025_%281%29_%28cropped%29.jpg',
+  'Daizen Maeda': 'https://upload.wikimedia.org/wikipedia/commons/6/68/Daizen_Maeda_%28cropped%29.jpg',
+  'Yukinari Sugawara': 'https://upload.wikimedia.org/wikipedia/commons/8/8c/Yukinari_Sugawara_2212024_%285%29.jpg',
+  'Koki Ogawa': 'https://upload.wikimedia.org/wikipedia/commons/4/47/GAE_-_NEC_-_53493888105_%28Koki_Ogawa%29.jpg',
+  'Hiroki Ito': 'https://upload.wikimedia.org/wikipedia/commons/9/93/Hiroki_Ito_VfB_Stuttgart.jpg',
+  'Shogo Taniguchi': 'https://upload.wikimedia.org/wikipedia/commons/d/d6/Shogo_Taniguchi.jpg',
+  'Yuito Suzuki': 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Yuito_Suzuki.jpg',
+  'Ayumu Seko': 'https://upload.wikimedia.org/wikipedia/commons/5/57/Ayumu_Seko_Japan_2025_%28cropped%29.jpg',
+  'Keisuke Osako': 'https://upload.wikimedia.org/wikipedia/commons/8/84/Sanfrecce_Hiroshima_-1_Keisuke_OSAKO.jpg',
+  'Kaishu Sano': 'https://upload.wikimedia.org/wikipedia/commons/4/49/Kaishu_Sano_2024_%28cropped%29.jpg',
+  'Keito Nakamura': 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Nakamura_asse_sr_2425.png',
+  'Tomoki Hayakawa': 'https://jleague-co.s3.ap-northeast-1.amazonaws.com/jleague-co/images/1632225_HAYAKAWA_Tomoki_avatar_player_aLIf9hu.original.jpg',
+  'Kento Shiogai': 'https://assets.bundesliga.com/player/dfl-obj-j0258e-dfl-clu-000003-dfl-sea-0001k9-body.png?crop=10,0,75,80&fit=256,256',
+  'Junnosuke Suzuki': 'https://img.a.transfermarkt.technology/portrait/big/848856-1761081129.jpg?lm=1',
+  'Tsuyoshi Watanabe': 'https://img.a.transfermarkt.technology/portrait/big/598791-1705504081.jpg?lm=1',
+  'Keisuke Goto': 'https://img.a.transfermarkt.technology/portrait/big/916623-1737967086.jpg?lm=1',
 };
 
 // Todos os 26 convocados de cada seleção, agrupados por posição.
@@ -75,11 +75,11 @@ const BRASIL_GROUPS = {
   FWD: [['Neymar Júnior', true], ['Raphinha', true], ['Vinícius Júnior', true], ['Endrick', false], ['Gabriel Martinelli', false], ['Igor Thiago', false], ['Luiz Henrique', false], ['Matheus Cunha', false], ['Rayan', false]],
 };
 
-const ESCOCIA_GROUPS = {
-  GK:  [['Angus Gunn', true], ['Craig Gordon', false], ['Liam Kelly', false]],
-  DEF: [['Andy Robertson', true], ['Grant Hanley', true], ['Jack Hendry', true], ['Nathan Patterson', true], ['Aaron Hickey', false], ['Anthony Ralston', false], ['Dominic Hyam', false], ['John Souttar', false], ['Kieran Tierney', false], ['Scott McKenna', false]],
-  MID: [['John McGinn', true], ['Kenny McLean', true], ['Scott McTominay', true], ['Ben Gannon-Doak', false], ['Lewis Ferguson', false], ['Ryan Christie', false], ['Tyler Fletcher', false]],
-  FWD: [['Ché Adams', true], ['Lawrence Shankland', true], ['Ross Stewart', true], ['Findlay Curtis', false], ['George Hirst', false], ['Lyndon Dykes', false]],
+const JAPAO_GROUPS = {
+  GK:  [['Zion Suzuki', true], ['Keisuke Osako', false], ['Tomoki Hayakawa', false]],
+  DEF: [['Yukinari Sugawara', true], ['Ko Itakura', true], ['Takehiro Tomiyasu', true], ['Yuto Nagatomo', true], ['Hiroki Ito', false], ['Junnosuke Suzuki', false], ['Ayumu Seko', false], ['Shogo Taniguchi', false], ['Tsuyoshi Watanabe', false]],
+  MID: [['Wataru Endo', true], ['Ao Tanaka', true], ['Daichi Kamada', true], ['Ritsu Doan', true], ['Junya Ito', false], ['Daizen Maeda', false], ['Yuito Suzuki', false], ['Kaishu Sano', false], ['Keito Nakamura', false]],
+  FWD: [['Takefusa Kubo', true], ['Ayase Ueda', true], ['Koki Ogawa', false], ['Kento Shiogai', false], ['Keisuke Goto', false]],
 };
 
 const buildTeamGroups = (team, groups) => {
@@ -93,10 +93,10 @@ const buildTeamGroups = (team, groups) => {
 };
 
 export const TEAM_BRASIL = buildTeamGroups('brasil', BRASIL_GROUPS);
-export const TEAM_ESCOCIA = buildTeamGroups('escocia', ESCOCIA_GROUPS);
+export const TEAM_JAPAO = buildTeamGroups('japao', JAPAO_GROUPS);
 
 // Lista plana — usada pelo luckyAutoDetect pra casar o nome do artilheiro vindo da API.
 export const ALL_PLAYERS = [
   ...['GK', 'DEF', 'MID', 'FWD'].flatMap(pos => TEAM_BRASIL[pos]),
-  ...['GK', 'DEF', 'MID', 'FWD'].flatMap(pos => TEAM_ESCOCIA[pos]),
+  ...['GK', 'DEF', 'MID', 'FWD'].flatMap(pos => TEAM_JAPAO[pos]),
 ];
