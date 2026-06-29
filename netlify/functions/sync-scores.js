@@ -310,6 +310,41 @@ const espnFindAndFetchEvents = async (matchDate, nameA, nameB) => {
   return null;
 };
 
+// Acha o jogo Brasil x Japão via ESPN (sem chave, sem cota) — usado como fallback
+// quando a API-Football não retorna esse fixture na listagem (cota esgotada etc).
+// Só devolve quando o jogo já terminou (FT/AET/PEN).
+const espnFindLuckyFixture = async () => {
+  const now = new Date();
+  for (const league of ESPN_LEAGUES_FALLBACK) {
+    for (const offset of [-2, -1, 0, 1]) {
+      const ds = new Date(now.getTime() + offset * 86400000).toISOString().split('T')[0].replace(/-/g, '');
+      try {
+        const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/scoreboard?dates=${ds}`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        for (const ev of (data.events || [])) {
+          const comp = ev.competitions?.[0];
+          if (!comp) continue;
+          const homeC = comp.competitors?.find(c => c.homeAway === 'home');
+          const awayC = comp.competitors?.find(c => c.homeAway === 'away');
+          if (!homeC || !awayC) continue;
+          const names = [homeC.team.displayName, awayC.team.displayName];
+          if (!names.includes('Brazil') || !names.includes('Japan')) continue;
+          if (!comp.status?.type?.completed) continue;
+          return {
+            date: comp.date || ev.date,
+            status: 'FT',
+            homeIsBrasil: homeC.team.displayName === 'Brazil',
+            scoreHome: parseInt(homeC.score || 0, 10),
+            scoreAway: parseInt(awayC.score || 0, 10),
+          };
+        }
+      } catch { /* tenta a próxima liga/data */ }
+    }
+  }
+  return null;
+};
+
 // Mesma busca acima, mas específica pro Palpite da Sorte: também extrai o nome
 // do jogador (necessário pra comparar com o palpite de "quem marca primeiro"),
 // que a espnFindAndFetchEvents genérica não guarda (não precisa pros outros jogos).
@@ -634,6 +669,26 @@ exports.handler = async () => {
   }
 
   // ── Apuração automática do Palpite da Sorte (Brasil x Japão) ───────────────
+  // Se a API-Football não achou o jogo (cota esgotada, fixture fora da janela do
+  // plano free, etc), tenta achar via ESPN antes de desistir — senão o jogo nunca
+  // chega a ser apurado automaticamente.
+  if (!luckyFixtureFound && luckyPending) {
+    try {
+      const espnFixture = await espnFindLuckyFixture();
+      if (espnFixture) {
+        luckyFixtureFound = {
+          fixture: { id: null, date: espnFixture.date, status: { short: espnFixture.status } },
+          teams: {
+            home: { name: espnFixture.homeIsBrasil ? 'Brazil' : 'Japan', id: null },
+            away: { name: espnFixture.homeIsBrasil ? 'Japan' : 'Brazil', id: null },
+          },
+          goals: { home: espnFixture.scoreHome, away: espnFixture.scoreAway },
+        };
+        console.log('[sync] Palpite da Sorte: jogo achado via ESPN (fallback)');
+      }
+    } catch(e) { console.warn('[sync] Palpite da Sorte: erro no fallback ESPN pra achar o jogo:', e.message); }
+  }
+
   if (luckyFixtureFound) {
     await finalizeLuckyResult(supabase, AF_KEY, luckyFixtureFound);
   }
