@@ -4,7 +4,12 @@ import { getMatches, getUserAllScorePredictions } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
 import { syncLiveScores } from '../services/syncScores';
+import { playBrasilSound } from '../hooks/useBrasilSound';
 import './MatchesPage.css';
+
+const isBrasilMatch = m => m.team_a === 'Brasil' || m.team_b === 'Brasil';
+const getBrasilScore = m =>
+  m.team_a === 'Brasil' ? (m.score_a ?? -1) : (m.score_b ?? -1);
 
 const PHASES = { groups:'Fase de Grupos', round_of_32:'16 Avos', round_of_16:'Oitavas', quarterfinals:'Quartas', semifinals:'Semifinal', final:'Final' };
 
@@ -51,8 +56,19 @@ export default function MatchesPage() {
   const intervalRef = useRef(null);
   const matchesRef = useRef([]); // ref para o sync sempre ver os matches atuais
 
-  const loadMatches = () => getMatches().then(({ data }) => {
+  const loadMatches = (checkGoal = false) => getMatches().then(({ data }) => {
     const list = data || [];
+    if (checkGoal) {
+      // Detecta se o Brasil marcou gol desde a última atualização
+      for (const m of list) {
+        if (!isBrasilMatch(m) || !m.is_finished === false) continue;
+        const oldMatch = matchesRef.current.find(o => o.id === m.id);
+        if (oldMatch && getBrasilScore(m) > getBrasilScore(oldMatch)) {
+          playBrasilSound();
+          break;
+        }
+      }
+    }
     matchesRef.current = list;
     setMatches(list);
   });
@@ -79,7 +95,7 @@ export default function MatchesPage() {
       try {
         const ids = await syncLiveScores(supabase);
         console.log('[LiveSync] tick — jogos ao vivo:', ids.size, [...ids]);
-        if (ids.size > 0) { setLiveIds(ids); loadMatches(); }
+        if (ids.size > 0) { setLiveIds(ids); loadMatches(true); }
       } catch (e) {
         console.error('[LiveSync] erro:', e.message);
       }

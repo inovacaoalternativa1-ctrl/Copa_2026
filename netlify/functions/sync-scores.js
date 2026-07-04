@@ -844,6 +844,34 @@ exports.handler = async () => {
 
     if (error) { console.error('[sync-scores] update error:', error.message); continue; }
 
+    // Detecta gol do Brasil durante o jogo ao vivo e envia push
+    const brasilIsTeamA = match.team_a === 'Brasil';
+    const brasilIsTeamB = match.team_b === 'Brasil';
+    if (brasilIsTeamA || brasilIsTeamB) {
+      const brasilScoreOld = brasilIsTeamA ? (match.score_a ?? 0) : (match.score_b ?? 0);
+      const brasilScoreNew = brasilIsTeamA ? scoreA : scoreB;
+      if (brasilScoreNew > brasilScoreOld) {
+        const adversario = brasilIsTeamA ? match.team_b : match.team_a;
+        const brasilScore = brasilIsTeamA ? `${scoreA}×${scoreB}` : `${scoreB}×${scoreA}`;
+        const goalPayload = JSON.stringify({
+          title: '🇧🇷 GOL DO BRASIL! ⚽',
+          body: `Brasil ${brasilScore} ${adversario} — Atualize o palpite!`,
+        });
+        for (const sub of (subs||[])) {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+              goalPayload
+            );
+          } catch(e) {
+            if (e.statusCode===410)
+              await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+          }
+        }
+        console.log(`[sync-scores] GOL DO BRASIL! ${brasilScoreNew}-${brasilScoreOld} → push enviado`);
+      }
+    }
+
     if (isCompleted) {
       updated.push({ match, scoreA, scoreB });
       await autoValidateExtras(supabase, match, scoreA, scoreB, f._afId || null);

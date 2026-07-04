@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getMyLuckyPrediction, upsertLuckyPrediction, getLuckyRanking } from '../services/api';
 import { getLuckyKickoff } from '../services/luckyAutoDetect';
 import { TEAM_BRASIL, TEAM_NORUEGA, POSITION_LABELS } from '../data/luckyPlayers';
+import { playBrasilSound } from '../hooks/useBrasilSound';
 import './LuckyPredictionPage.css';
 
 const LOCK_MS_BEFORE_KICKOFF = 60 * 60 * 1000; // palpites travam 1h antes do jogo
@@ -105,6 +106,7 @@ export default function LuckyPredictionPage() {
 
   useEffect(() => {
     getLuckyKickoff().then(setKickoff);
+    playBrasilSound();
   }, []);
 
   useEffect(() => {
