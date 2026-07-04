@@ -50,6 +50,17 @@ export const PHOTOS = {
   'Morten Thorsby': 'https://upload.wikimedia.org/wikipedia/commons/7/76/Norway_Italy_-_June_2025_B_01_%28cropped%29.jpg',
   'Marcus Holmgren Pedersen': 'https://upload.wikimedia.org/wikipedia/commons/1/1a/Marcus_Holmgren_Pedersen_2022_FC_RB_Salzburg_gegen_Feyenoord_Rotterdam_%28cropped%29.jpg',
   'Leo Østigard': 'https://img.a.transfermarkt.technology/portrait/big/367284-1708552959.jpg?lm=1',
+  'Sander Tangvik': 'https://img.a.transfermarkt.technology/portrait/big/549378-1768895607.jpg?lm=1',
+  'Egil Selvik': 'https://img.a.transfermarkt.technology/portrait/big/380744-1779430706.jpg?lm=1',
+  'Fredrik André Bjørkan': 'https://img.a.transfermarkt.technology/portrait/big/364938-1771971421.jpg?lm=1',
+  'Torbjørn Heggem': 'https://img.a.transfermarkt.technology/portrait/big/464469-1702050091.jpg?lm=1',
+  'Sondre Langas': 'https://img.a.transfermarkt.technology/portrait/big/737837-1711131237.jpg?lm=1',
+  'Kristian Thorstvedt': 'https://img.a.transfermarkt.technology/portrait/big/564785-1692883043.jpg?lm=1',
+  'Thelo Aasgaard': 'https://img.a.transfermarkt.technology/portrait/big/647384-1645614893.png?lm=1',
+  'Patrick Berg': 'https://img.a.transfermarkt.technology/portrait/big/308439-1712614235.jpg?lm=1',
+  'Andreas Schjelderup': 'https://img.a.transfermarkt.technology/portrait/big/670103-1697191976.jpg?lm=1',
+  'Henrik Falchener': 'https://img.a.transfermarkt.technology/portrait/big/743088-1780049035.jpg?lm=1',
+  'David Møller Wolfe': 'https://img.a.transfermarkt.technology/portrait/big/661427-1753350331.jpg?lm=1',
 };
 
 // Todos os 26 convocados de cada seleção, agrupados por posição.
