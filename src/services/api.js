@@ -59,7 +59,7 @@ export const getPhaseRanking = (phase) =>
 export const adminGiveBonusPoints = (userId, amount) =>
   supabase.rpc('add_bonus_points', { p_user_id: userId, p_amount: amount });
 
-// ===== PALPITE DA SORTE (Brasil x Japão) =====
+// ===== PALPITE DA SORTE (Brasil x Noruega) =====
 export const getMyLuckyPrediction = (userId) =>
   supabase.from('lucky_predictions').select('*').eq('user_id', userId).maybeSingle();
 

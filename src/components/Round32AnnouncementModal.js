@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import './LuckyAnnouncementModal.css';
 
 const SEEN_KEY_PREFIX = 'copa_round32_announcement_seen_v1_';
-const LUCKY_SEEN_KEY_PREFIX = 'copa_lucky_announcement_seen_v3_';
+const LUCKY_SEEN_KEY_PREFIX = 'copa_lucky_announcement_seen_v4_';
 const COLORS = ['#FFD23F', '#004AAD', '#FFFFFF', '#FF7A00'];
 
 const spawnConfetti = (container) => {

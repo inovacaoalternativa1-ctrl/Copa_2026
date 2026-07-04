@@ -139,7 +139,7 @@ export default function AdminAndreyPage() {
     setGiving(false);
   };
 
-  // Apuração automática do Palpite da Sorte (Brasil x Japão)
+  // Apuração automática do Palpite da Sorte (Brasil x Noruega)
   const [luckyDetecting, setLuckyDetecting] = useState(false);
   const [luckyError, setLuckyError] = useState('');
   const [luckyPreview, setLuckyPreview] = useState(null);
@@ -369,7 +369,7 @@ export default function AdminAndreyPage() {
       </div>
 
       <div className="card andrey-tool-card">
-        <h3 className="section-title">🍀 Apurar Palpite da Sorte (Brasil x Japão)</h3>
+        <h3 className="section-title">🍀 Apurar Palpite da Sorte (Brasil x Noruega)</h3>
         <p className="andrey-tool-hint">
           Busca o resultado real na API de futebol e calcula a pontuação de todo mundo automaticamente.
         </p>
@@ -407,7 +407,7 @@ export default function AdminAndreyPage() {
             )}
 
             <div className="form-group">
-              <label>Placar (Brasil × Japão)</label>
+              <label>Placar (Brasil × Noruega)</label>
               <div className="andrey-score-row">
                 <input type="number" min="0" value={luckyPreview.scoreA}
                   onChange={e => updateLuckyPreview('scoreA', e.target.value)} />
@@ -422,7 +422,7 @@ export default function AdminAndreyPage() {
               <select value={luckyPreview.firstTeam} onChange={e => updateLuckyPreview('firstTeam', e.target.value)}>
                 <option value="">—</option>
                 <option value="brasil">Brasil</option>
-                <option value="japao">Japão</option>
+                <option value="noruega">Noruega</option>
               </select>
             </div>
 
@@ -482,7 +482,7 @@ export default function AdminAndreyPage() {
                 <option value="">—</option>
                 <option value="brasil">Brasil</option>
                 <option value="ambos">Ambos</option>
-                <option value="japao">Japão</option>
+                <option value="noruega">Noruega</option>
               </select>
             </div>
 

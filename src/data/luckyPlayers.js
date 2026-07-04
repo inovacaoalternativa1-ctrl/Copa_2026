@@ -35,32 +35,21 @@ export const PHOTOS = {
   'Igor Thiago': '/players/igor-thiago.jpg',
   'Éderson': '/players/ederson-atalanta.jpg',
   'Rayan': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/27/Rayan_Brazil_V_Morocco_13_June_2026-142.jpg/330px-Rayan_Brazil_V_Morocco_13_June_2026-142.jpg',
-  'Zion Suzuki': 'https://upload.wikimedia.org/wikipedia/commons/7/7b/ZION_SUZUKI_-_JPN_vs_THA_-_Friendly_Match_-_2024.01.01.jpg',
-  'Takefusa Kubo': 'https://upload.wikimedia.org/wikipedia/commons/5/52/Takefusa_Kubo_1053.jpg',
-  'Wataru Endo': 'https://upload.wikimedia.org/wikipedia/commons/3/36/Wataru_End%C5%8D_06042025_%281%29.jpg',
-  'Ko Itakura': 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Ko_Itakura_%28cropped%29.jpg',
-  'Takehiro Tomiyasu': 'https://upload.wikimedia.org/wikipedia/commons/b/b4/Takehiro_Tomiyasu.jpg',
-  'Ritsu Doan': 'https://upload.wikimedia.org/wikipedia/commons/a/ae/Ritsu_D%C5%8Dan_2024_%28cropped%29.jpg',
-  'Daichi Kamada': 'https://upload.wikimedia.org/wikipedia/commons/e/e4/2022128173756_2022-05-08_Fussball_Eintracht_Frankfurt_vs_Borussia_M%C3%B6nchengladbach_-_Sven_-_1D_X_MK_II_-_0725_-_AK8I7460_%28Daichi_Kamada_cropped%29.jpg',
-  'Yuto Nagatomo': 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Yuto_Nagatomo_in_2018.jpg',
-  'Junya Ito': 'https://upload.wikimedia.org/wikipedia/commons/5/57/Ito_asse_sr_2425.png',
-  'Ayase Ueda': 'https://upload.wikimedia.org/wikipedia/commons/2/2f/AyaseUedaFrontPriorMatchCercleVsOHV_%28cropped%29.jpg',
-  'Ao Tanaka': 'https://upload.wikimedia.org/wikipedia/commons/f/f6/Ao_Tanaka_13092025_%281%29_%28cropped%29.jpg',
-  'Daizen Maeda': 'https://upload.wikimedia.org/wikipedia/commons/6/68/Daizen_Maeda_%28cropped%29.jpg',
-  'Yukinari Sugawara': 'https://upload.wikimedia.org/wikipedia/commons/8/8c/Yukinari_Sugawara_2212024_%285%29.jpg',
-  'Koki Ogawa': 'https://upload.wikimedia.org/wikipedia/commons/4/47/GAE_-_NEC_-_53493888105_%28Koki_Ogawa%29.jpg',
-  'Hiroki Ito': 'https://upload.wikimedia.org/wikipedia/commons/9/93/Hiroki_Ito_VfB_Stuttgart.jpg',
-  'Shogo Taniguchi': 'https://upload.wikimedia.org/wikipedia/commons/d/d6/Shogo_Taniguchi.jpg',
-  'Yuito Suzuki': 'https://upload.wikimedia.org/wikipedia/commons/6/6f/Yuito_Suzuki.jpg',
-  'Ayumu Seko': 'https://upload.wikimedia.org/wikipedia/commons/5/57/Ayumu_Seko_Japan_2025_%28cropped%29.jpg',
-  'Keisuke Osako': 'https://upload.wikimedia.org/wikipedia/commons/8/84/Sanfrecce_Hiroshima_-1_Keisuke_OSAKO.jpg',
-  'Kaishu Sano': 'https://upload.wikimedia.org/wikipedia/commons/4/49/Kaishu_Sano_2024_%28cropped%29.jpg',
-  'Keito Nakamura': 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Nakamura_asse_sr_2425.png',
-  'Tomoki Hayakawa': 'https://jleague-co.s3.ap-northeast-1.amazonaws.com/jleague-co/images/1632225_HAYAKAWA_Tomoki_avatar_player_aLIf9hu.original.jpg',
-  'Kento Shiogai': 'https://assets.bundesliga.com/player/dfl-obj-j0258e-dfl-clu-000003-dfl-sea-0001k9-body.png?crop=10,0,75,80&fit=256,256',
-  'Junnosuke Suzuki': 'https://img.a.transfermarkt.technology/portrait/big/848856-1761081129.jpg?lm=1',
-  'Tsuyoshi Watanabe': 'https://img.a.transfermarkt.technology/portrait/big/598791-1705504081.jpg?lm=1',
-  'Keisuke Goto': 'https://img.a.transfermarkt.technology/portrait/big/916623-1737967086.jpg?lm=1',
+  'Ørjan Nyland': 'https://upload.wikimedia.org/wikipedia/commons/2/22/Norway_Italy_-_June_2025_A_10_%28cropped%29.jpg',
+  'Martin Ødegaard': 'https://upload.wikimedia.org/wikipedia/commons/3/36/Martin_Odegaard_Morocco_v_Norway_7_June_2026-56_%28cropped%29.jpg',
+  'Alexander Sørloth': 'https://upload.wikimedia.org/wikipedia/commons/6/68/Alexander_Sorloth_Morocco_v_Norway_7_June_2026-58_%28cropped%29.jpg',
+  'Erling Haaland': 'https://upload.wikimedia.org/wikipedia/commons/4/43/Erling_Haaland_Morocco_v_Norway_7_June_2026-51.jpg',
+  'Julian Ryerson': 'https://upload.wikimedia.org/wikipedia/commons/f/fa/Julian_Ryerson_Morocco_v_Norway_7_June_2026-200_%28cropped%29.jpg',
+  'Antonio Nusa': 'https://upload.wikimedia.org/wikipedia/commons/8/80/Antonio_Nusa_Morocco_v_Norway_7_June_2026-110_%28cropped%29.jpg',
+  'Fredrik Aursnes': 'https://upload.wikimedia.org/wikipedia/commons/0/08/Fredrik_Aursnes_Morocco_v_Norway_7_June_2026-31.jpg',
+  'Jens Petter Hauge': 'https://upload.wikimedia.org/wikipedia/commons/d/d4/Jens_Petter_Hauge_Morocco_v_Norway_7_June_2026-21.jpg',
+  'Sander Berge': 'https://upload.wikimedia.org/wikipedia/commons/9/9b/Sander_Berge_01112025_%282%29.jpg',
+  'Kristoffer Ajer': 'https://upload.wikimedia.org/wikipedia/commons/e/eb/Kristoffer_Ajer_02082025_%281%29.jpg',
+  'Oscar Bobb': 'https://upload.wikimedia.org/wikipedia/commons/5/54/ManCity20240722-050_%28Oscar_Bobb2%29.jpg',
+  'Jørgen Strand Larsen': 'https://upload.wikimedia.org/wikipedia/commons/4/45/J%C3%B8rgen_Strand_Larsen_01112025_%282%29.jpg',
+  'Morten Thorsby': 'https://upload.wikimedia.org/wikipedia/commons/7/76/Norway_Italy_-_June_2025_B_01_%28cropped%29.jpg',
+  'Marcus Holmgren Pedersen': 'https://upload.wikimedia.org/wikipedia/commons/1/1a/Marcus_Holmgren_Pedersen_2022_FC_RB_Salzburg_gegen_Feyenoord_Rotterdam_%28cropped%29.jpg',
+  'Leo Østigard': 'https://img.a.transfermarkt.technology/portrait/big/367284-1708552959.jpg?lm=1',
 };
 
 // Todos os 26 convocados de cada seleção, agrupados por posição.
@@ -75,11 +64,11 @@ const BRASIL_GROUPS = {
   FWD: [['Neymar Júnior', true], ['Raphinha', true], ['Vinícius Júnior', true], ['Endrick', false], ['Gabriel Martinelli', false], ['Igor Thiago', false], ['Luiz Henrique', false], ['Matheus Cunha', false], ['Rayan', false]],
 };
 
-const JAPAO_GROUPS = {
-  GK:  [['Zion Suzuki', true], ['Keisuke Osako', false], ['Tomoki Hayakawa', false]],
-  DEF: [['Yukinari Sugawara', true], ['Ko Itakura', true], ['Takehiro Tomiyasu', true], ['Yuto Nagatomo', true], ['Hiroki Ito', false], ['Junnosuke Suzuki', false], ['Ayumu Seko', false], ['Shogo Taniguchi', false], ['Tsuyoshi Watanabe', false]],
-  MID: [['Wataru Endo', true], ['Ao Tanaka', true], ['Daichi Kamada', true], ['Ritsu Doan', true], ['Junya Ito', false], ['Daizen Maeda', false], ['Yuito Suzuki', false], ['Kaishu Sano', false], ['Keito Nakamura', false]],
-  FWD: [['Takefusa Kubo', true], ['Ayase Ueda', true], ['Koki Ogawa', false], ['Kento Shiogai', false], ['Keisuke Goto', false]],
+const NORUEGA_GROUPS = {
+  GK:  [['Ørjan Nyland', true], ['Sander Tangvik', false], ['Egil Selvik', false]],
+  DEF: [['Julian Ryerson', true], ['Leo Østigard', true], ['Kristoffer Ajer', true], ['Fredrik André Bjørkan', true], ['Marcus Holmgren Pedersen', false], ['Torbjørn Heggem', false], ['Sondre Langas', false], ['Henrik Falchener', false], ['David Møller Wolfe', false]],
+  MID: [['Martin Ødegaard', true], ['Sander Berge', true], ['Morten Thorsby', true], ['Fredrik Aursnes', false], ['Kristian Thorstvedt', false], ['Thelo Aasgaard', false], ['Oscar Bobb', false], ['Jens Petter Hauge', false], ['Patrick Berg', false]],
+  FWD: [['Erling Haaland', true], ['Alexander Sørloth', true], ['Antonio Nusa', true], ['Jørgen Strand Larsen', false], ['Andreas Schjelderup', false]],
 };
 
 const buildTeamGroups = (team, groups) => {
@@ -93,10 +82,10 @@ const buildTeamGroups = (team, groups) => {
 };
 
 export const TEAM_BRASIL = buildTeamGroups('brasil', BRASIL_GROUPS);
-export const TEAM_JAPAO = buildTeamGroups('japao', JAPAO_GROUPS);
+export const TEAM_NORUEGA = buildTeamGroups('noruega', NORUEGA_GROUPS);
 
 // Lista plana — usada pelo luckyAutoDetect pra casar o nome do artilheiro vindo da API.
 export const ALL_PLAYERS = [
   ...['GK', 'DEF', 'MID', 'FWD'].flatMap(pos => TEAM_BRASIL[pos]),
-  ...['GK', 'DEF', 'MID', 'FWD'].flatMap(pos => TEAM_JAPAO[pos]),
+  ...['GK', 'DEF', 'MID', 'FWD'].flatMap(pos => TEAM_NORUEGA[pos]),
 ];

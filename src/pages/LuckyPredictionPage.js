@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getMyLuckyPrediction, upsertLuckyPrediction, getLuckyRanking } from '../services/api';
 import { getLuckyKickoff } from '../services/luckyAutoDetect';
-import { TEAM_BRASIL, TEAM_JAPAO, POSITION_LABELS } from '../data/luckyPlayers';
+import { TEAM_BRASIL, TEAM_NORUEGA, POSITION_LABELS } from '../data/luckyPlayers';
 import './LuckyPredictionPage.css';
 
 const LOCK_MS_BEFORE_KICKOFF = 60 * 60 * 1000; // palpites travam 1h antes do jogo
@@ -29,7 +29,7 @@ const EXTRA_QUESTIONS = [
 
 const EXTRA_ANSWER_LABEL = (q, answer) => {
   if (q.type === 'team3') {
-    return answer === 'brasil' ? 'Brasil' : answer === 'japao' ? 'Japão' : 'Ambos os times';
+    return answer === 'brasil' ? 'Brasil' : answer === 'noruega' ? 'Noruega' : 'Ambos os times';
   }
   return answer === 'yes' ? 'Sim' : 'Não';
 };
@@ -61,8 +61,8 @@ const getInitials = (name = '') => {
 
 // Bandeiras reais (flagcdn) — emojis de bandeira não renderizam corretamente no Windows.
 const Flag = ({ team, size = 20 }) => {
-  const src = team === 'brasil' ? 'https://flagcdn.com/w40/br.png' : 'https://flagcdn.com/w40/jp.png';
-  const alt = team === 'brasil' ? 'Brasil' : 'Japão';
+  const src = team === 'brasil' ? 'https://flagcdn.com/w40/br.png' : 'https://flagcdn.com/w40/no.png';
+  const alt = team === 'brasil' ? 'Brasil' : 'Noruega';
   return <img src={src} alt={alt} className="flag-img" style={{ width: size, height: Math.round(size * 0.75) }} />;
 };
 
@@ -156,7 +156,7 @@ export default function LuckyPredictionPage() {
     if (isLocked) { setError('Os palpites já estão encerrados — falta menos de 1h para o jogo.'); return; }
     if (scoreA === '' || scoreB === '') { setError('Informe o placar completo.'); return; }
     if (!/^\d+$/.test(scoreA) || !/^\d+$/.test(scoreB)) { setError('O placar deve ser número inteiro positivo.'); return; }
-    if (!firstTeam) { setError('Escolha quem marca primeiro: Brasil ou Japão.'); return; }
+    if (!firstTeam) { setError('Escolha quem marca primeiro: Brasil ou Noruega.'); return; }
     if (!scorer) { setError('Selecione o jogador que você acha que vai marcar primeiro.'); return; }
 
     setSaving(true);
@@ -214,7 +214,7 @@ export default function LuckyPredictionPage() {
       </div>
 
       <div className="lucky-banner">
-        <strong><Flag team="brasil" size={26} /> Brasil × Japão <Flag team="japao" size={26} /></strong>
+        <strong><Flag team="brasil" size={26} /> Brasil × Noruega <Flag team="noruega" size={26} /></strong>
         <span>Palpite único — placar exato, quem marca primeiro e qual jogador marca primeiro.</span>
       </div>
 
@@ -237,11 +237,11 @@ export default function LuckyPredictionPage() {
           </div>
           <div className="lucky-confirm-row">
             <span>Marca primeiro:</span>
-            <strong><Flag team={saved.firstTeam} size={18} /> {saved.firstTeam === 'brasil' ? 'Brasil' : 'Japão'} <span className="lucky-pts-badge">+{POINTS.firstTeam} pts</span></strong>
+            <strong><Flag team={saved.firstTeam} size={18} /> {saved.firstTeam === 'brasil' ? 'Brasil' : 'Noruega'} <span className="lucky-pts-badge">+{POINTS.firstTeam} pts</span></strong>
           </div>
           <div className="lucky-confirm-row">
             <span>Jogador que marca primeiro:</span>
-            <strong>{saved.scorer.name} ({saved.scorer.team === 'brasil' ? 'Brasil' : 'Japão'}) <span className="lucky-pts-badge">+{POINTS.scorer} pts</span></strong>
+            <strong>{saved.scorer.name} ({saved.scorer.team === 'brasil' ? 'Brasil' : 'Noruega'}) <span className="lucky-pts-badge">+{POINTS.scorer} pts</span></strong>
           </div>
           {EXTRA_QUESTIONS.filter(q => saved.extras?.[q.key]).map(q => (
             <div className="lucky-confirm-row" key={q.key}>
@@ -285,7 +285,7 @@ export default function LuckyPredictionPage() {
               </div>
               <span className="lucky-score-sep">×</span>
               <div className="lucky-score-team">
-                <span><Flag team="japao" /> Japão</span>
+                <span><Flag team="noruega" /> Noruega</span>
                 <input type="number" min="0" max="20" value={scoreB} onChange={e => setScoreB(e.target.value)} className="lucky-score-input" placeholder="0" />
               </div>
             </div>
@@ -298,8 +298,8 @@ export default function LuckyPredictionPage() {
               <button className={`lucky-first-btn ${firstTeam === 'brasil' ? 'active' : ''}`} onClick={() => setFirstTeam('brasil')}>
                 <Flag team="brasil" size={22} /> Brasil
               </button>
-              <button className={`lucky-first-btn ${firstTeam === 'japao' ? 'active' : ''}`} onClick={() => setFirstTeam('japao')}>
-                <Flag team="japao" size={22} /> Japão
+              <button className={`lucky-first-btn ${firstTeam === 'noruega' ? 'active' : ''}`} onClick={() => setFirstTeam('noruega')}>
+                <Flag team="noruega" size={22} /> Noruega
               </button>
             </div>
           </div>
@@ -319,8 +319,8 @@ export default function LuckyPredictionPage() {
             )}
 
             <div className="lucky-pitch">
-              <div className="lucky-pitch-team-label top"><Flag team="japao" size={18} /> Japão</div>
-              {renderTeamBlock(TEAM_JAPAO, ['GK', 'DEF', 'MID', 'FWD'])}
+              <div className="lucky-pitch-team-label top"><Flag team="noruega" size={18} /> Noruega</div>
+              {renderTeamBlock(TEAM_NORUEGA, ['GK', 'DEF', 'MID', 'FWD'])}
               <div className="lucky-pitch-midline" />
               {renderTeamBlock(TEAM_BRASIL, ['FWD', 'MID', 'DEF', 'GK'])}
               <div className="lucky-pitch-team-label bottom"><Flag team="brasil" size={18} /> Brasil</div>
@@ -349,8 +349,8 @@ export default function LuckyPredictionPage() {
                           <Flag team="brasil" size={14} /> Brasil
                         </button>
                         <button className={`choice ${extras[q.key] === 'ambos' ? 'active-yes' : ''}`} onClick={() => toggleExtra(q.key, 'ambos')}>Ambos</button>
-                        <button className={`choice ${extras[q.key] === 'japao' ? 'active-yes' : ''}`} onClick={() => toggleExtra(q.key, 'japao')}>
-                          <Flag team="japao" size={14} /> Japão
+                        <button className={`choice ${extras[q.key] === 'noruega' ? 'active-yes' : ''}`} onClick={() => toggleExtra(q.key, 'noruega')}>
+                          <Flag team="noruega" size={14} /> Noruega
                         </button>
                       </>
                     ) : (

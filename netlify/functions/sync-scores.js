@@ -98,12 +98,12 @@ const buildScoreOnlyResults = (scoreA, scoreB, status) => {
   return out;
 };
 
-// ── Palpite da Sorte (Brasil x Japão) — feature isolada, não toca em "matches" ──
+// ── Palpite da Sorte (Brasil x Noruega) — feature isolada, não toca em "matches" ──
 // Reaproveita os fixtures que a Etapa 1 (live) e Etapa 2 (por data) já buscam pra
 // detectar esse jogo específico sem gastar requisição extra na API-Football.
 const isLuckyFixture = (f) => {
   const h = f.teams.home.name, a = f.teams.away.name;
-  return (h === 'Brazil' && a === 'Japan') || (h === 'Japan' && a === 'Brazil');
+  return (h === 'Brazil' && a === 'Norway') || (h === 'Norway' && a === 'Brazil');
 };
 
 const LUCKY_PLAYERS = [
@@ -113,11 +113,11 @@ const LUCKY_PLAYERS = [
   ['Bruno Guimarães','brasil'],['Casemiro','brasil'],['Lucas Paquetá','brasil'],['Danilo Santos','brasil'],['Éderson','brasil'],['Fabinho','brasil'],
   ['Neymar Júnior','brasil'],['Raphinha','brasil'],['Vinícius Júnior','brasil'],['Endrick','brasil'],['Gabriel Martinelli','brasil'],
   ['Igor Thiago','brasil'],['Luiz Henrique','brasil'],['Matheus Cunha','brasil'],['Rayan','brasil'],
-  ['Zion Suzuki','japao'],['Keisuke Osako','japao'],['Tomoki Hayakawa','japao'],
-  ['Yukinari Sugawara','japao'],['Ko Itakura','japao'],['Takehiro Tomiyasu','japao'],['Yuto Nagatomo','japao'],
-  ['Hiroki Ito','japao'],['Junnosuke Suzuki','japao'],['Ayumu Seko','japao'],['Shogo Taniguchi','japao'],['Tsuyoshi Watanabe','japao'],
-  ['Wataru Endo','japao'],['Ao Tanaka','japao'],['Daichi Kamada','japao'],['Ritsu Doan','japao'],['Junya Ito','japao'],['Daizen Maeda','japao'],['Yuito Suzuki','japao'],['Kaishu Sano','japao'],['Keito Nakamura','japao'],
-  ['Takefusa Kubo','japao'],['Ayase Ueda','japao'],['Koki Ogawa','japao'],['Kento Shiogai','japao'],['Keisuke Goto','japao'],
+  ['Ørjan Nyland','noruega'],['Sander Tangvik','noruega'],['Egil Selvik','noruega'],
+  ['Julian Ryerson','noruega'],['Leo Østigard','noruega'],['Kristoffer Ajer','noruega'],['Fredrik André Bjørkan','noruega'],
+  ['Marcus Holmgren Pedersen','noruega'],['Torbjørn Heggem','noruega'],['Sondre Langas','noruega'],['Henrik Falchener','noruega'],['David Møller Wolfe','noruega'],
+  ['Martin Ødegaard','noruega'],['Sander Berge','noruega'],['Morten Thorsby','noruega'],['Fredrik Aursnes','noruega'],['Kristian Thorstvedt','noruega'],['Thelo Aasgaard','noruega'],['Oscar Bobb','noruega'],['Jens Petter Hauge','noruega'],['Patrick Berg','noruega'],
+  ['Erling Haaland','noruega'],['Alexander Sørloth','noruega'],['Antonio Nusa','noruega'],['Jørgen Strand Larsen','noruega'],['Andreas Schjelderup','noruega'],
 ];
 const normLuckyName = s => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z\s]/g,'').trim();
 const matchLuckyPlayer = (apiName, team) => {
@@ -139,9 +139,9 @@ const finalizeLuckyResult = async (supabase, AF_KEY, fixture) => {
     const scoreA = homeIsBrasil ? fixture.goals.home : fixture.goals.away;
     const scoreB = homeIsBrasil ? fixture.goals.away : fixture.goals.home;
     const brasilTeamId = homeIsBrasil ? fixture.teams.home.id : fixture.teams.away.id;
-    const japaoTeamId = homeIsBrasil ? fixture.teams.away.id : fixture.teams.home.id;
+    const norueganTeamId = homeIsBrasil ? fixture.teams.away.id : fixture.teams.home.id;
 
-    // Eventos normalizados: { type, detail, teamKey: 'brasil'|'japao', elapsed, playerName }
+    // Eventos normalizados: { type, detail, teamKey: 'brasil'|'noruega', elapsed, playerName }
     let events = [];
     if (fixtureId && AF_KEY) {
       try {
@@ -150,7 +150,7 @@ const finalizeLuckyResult = async (supabase, AF_KEY, fixture) => {
           events = ((await evRes.json()).response || []).map(e => ({
             type: e.type,
             detail: e.detail,
-            teamKey: e.team.id === brasilTeamId ? 'brasil' : e.team.id === japaoTeamId ? 'japao' : null,
+            teamKey: e.team.id === brasilTeamId ? 'brasil' : e.team.id === norueganTeamId ? 'noruega' : null,
             elapsed: e.time?.elapsed || 0,
             playerName: e.player?.name || null,
           }));
@@ -173,8 +173,8 @@ const finalizeLuckyResult = async (supabase, AF_KEY, fixture) => {
     const isRedLucky = e => e.type === 'Card' && (e.detail === 'Red Card' || e.detail === 'Yellow Red Card');
     const hasRedCard = events.some(isRedLucky);
     const hasYellowBrasil = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.teamKey === 'brasil');
-    const hasYellowJapao = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.teamKey === 'japao');
-    const yellowTeam = hasYellowBrasil && hasYellowJapao ? 'ambos' : hasYellowBrasil ? 'brasil' : hasYellowJapao ? 'japao' : null;
+    const hasYellowNoruega = events.some(e => e.type === 'Card' && e.detail === 'Yellow Card' && e.teamKey === 'noruega');
+    const yellowTeam = hasYellowBrasil && hasYellowNoruega ? 'ambos' : hasYellowBrasil ? 'brasil' : hasYellowNoruega ? 'noruega' : null;
 
     const firstHalfGoal = goals.some(e => e.elapsed <= 45);
     const secondHalfGoal = goals.some(e => e.elapsed > 45);
@@ -199,7 +199,7 @@ const finalizeLuckyResult = async (supabase, AF_KEY, fixture) => {
         first_team: firstTeam,
         scorer_name: scorerName,
         penalty: hasPenalty, red_card: hasRedCard,
-        yellow_card: hasYellowBrasil || hasYellowJapao, yellow_team: yellowTeam,
+        yellow_card: hasYellowBrasil || hasYellowNoruega, yellow_team: yellowTeam,
         first_half_goal: firstHalfGoal, second_half_goal: secondHalfGoal,
         own_goal: ownGoal,
       });
@@ -310,7 +310,7 @@ const espnFindAndFetchEvents = async (matchDate, nameA, nameB) => {
   return null;
 };
 
-// Acha o jogo Brasil x Japão via ESPN (sem chave, sem cota) — usado como fallback
+// Acha o jogo Brasil x Noruega via ESPN (sem chave, sem cota) — usado como fallback
 // quando a API-Football não retorna esse fixture na listagem (cota esgotada etc).
 // Só devolve quando o jogo já terminou (FT/AET/PEN).
 const espnFindLuckyFixture = async () => {
@@ -329,7 +329,7 @@ const espnFindLuckyFixture = async () => {
           const awayC = comp.competitors?.find(c => c.homeAway === 'away');
           if (!homeC || !awayC) continue;
           const names = [homeC.team.displayName, awayC.team.displayName];
-          if (!names.includes('Brazil') || !names.includes('Japan')) continue;
+          if (!names.includes('Brazil') || !names.includes('Norway')) continue;
           if (!comp.status?.type?.completed) continue;
           return {
             date: comp.date || ev.date,
@@ -367,7 +367,7 @@ const espnFindAndFetchLuckyEvents = async (matchDate) => {
           const awayC = comp.competitors?.find(c => c.homeAway === 'away');
           if (!homeC || !awayC) continue;
           const names = [homeC.team.displayName, awayC.team.displayName];
-          if (!names.includes('Brazil') || !names.includes('Japan')) continue;
+          if (!names.includes('Brazil') || !names.includes('Norway')) continue;
           const homeIsBrasil = homeC.team.displayName === 'Brazil';
           const homeTeamIdESPN = homeC.team.id;
           const sum = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/summary?event=${ev.id}`);
@@ -376,7 +376,7 @@ const espnFindAndFetchLuckyEvents = async (matchDate) => {
           const details = sd.header?.competitions?.[0]?.details || [];
           const events = details.map(d => {
             const isHome = d.team?.id === homeTeamIdESPN;
-            const teamKey = (isHome === homeIsBrasil) ? 'brasil' : 'japao';
+            const teamKey = (isHome === homeIsBrasil) ? 'brasil' : 'noruega';
             const elapsed = Math.ceil((d.clock?.value || 0) / 60);
             const playerName = d.athletesInvolved?.[0]?.displayName || d.participants?.[0]?.athlete?.displayName || null;
             if (d.scoringPlay) return { type:'Goal', detail: d.ownGoal?'Own Goal':d.penaltyKick?'Penalty':'Normal Goal', teamKey, elapsed, playerName };
@@ -668,7 +668,7 @@ exports.handler = async () => {
     } catch(e) { console.warn('[sync] Etapa 2 erro:', e.message); }
   }
 
-  // ── Apuração automática do Palpite da Sorte (Brasil x Japão) ───────────────
+  // ── Apuração automática do Palpite da Sorte (Brasil x Noruega) ───────────────
   // Se a API-Football não achou o jogo (cota esgotada, fixture fora da janela do
   // plano free, etc), tenta achar via ESPN antes de desistir — senão o jogo nunca
   // chega a ser apurado automaticamente.
