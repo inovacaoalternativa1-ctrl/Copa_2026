@@ -364,3 +364,16 @@
   .prize-card__lucky-tag { margin-left: 0; font-size: 10px; padding: 3px 9px; }
   .prizes-hero--lucky .prizes-title { font-size: 34px; }
 }
+
+.prize-card__sponsor {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--orange);
+  background: rgba(255,122,0,0.1);
+  border: 1px solid rgba(255,122,0,0.25);
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin-top: 12px;
+  text-align: center;
+  letter-spacing: 0.3px;
+}

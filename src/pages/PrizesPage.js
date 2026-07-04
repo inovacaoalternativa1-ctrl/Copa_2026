@@ -28,8 +28,9 @@ const PRIZES = [
 const LUCKY_PRIZES = [
   {
     position: 1, medal: '🥇', label: '1º Lugar', color: 'gold',
+    sponsor: 'Patrocínio: Única Administradora',
     items: [
-      { icon: '🍺', text: 'Caixa de Heineken (Patrocínio Sanel)', img: '/images/lucky-prizes/primeiro-lugar.jpg', imgPosition: '50% 15%' },
+      { icon: '🖼️', text: 'Porta Retrato Digital', img: null },
       { icon: '🍷', text: 'Vinho', img: null },
     ],
   },
@@ -156,7 +157,7 @@ export default function PrizesPage() {
       <div className="prizes-hero prizes-hero--lucky">
         <div className="prizes-trophy">🍀</div>
         <h1 className="prizes-title">Prêmios — Palpite da Sorte</h1>
-        <p className="prizes-subtitle">Ranking separado, exclusivo do palpite Brasil × Japão</p>
+        <p className="prizes-subtitle">Ranking separado, exclusivo do palpite Brasil × Noruega</p>
       </div>
 
       <div className="prizes-list">
@@ -191,12 +192,15 @@ export default function PrizesPage() {
                 </li>
               ))}
             </ul>
+            {prize.sponsor && (
+              <div className="prize-card__sponsor">🤝 {prize.sponsor}</div>
+            )}
           </div>
         ))}
       </div>
 
       <p className="prizes-footer">
-        Vencedores definidos pelo resultado real do jogo Brasil × Japão — ranking independente da Copa.
+        Vencedores definidos pelo resultado real do jogo Brasil × Noruega — ranking independente da Copa.
       </p>
 
       {lightbox && (
