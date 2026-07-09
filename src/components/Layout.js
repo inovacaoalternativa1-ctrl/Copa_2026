@@ -5,7 +5,6 @@ import supabase from '../services/supabase';
 import { usePush } from '../hooks/usePush';
 import LuckyAnnouncementModal from './LuckyAnnouncementModal';
 import Round32AnnouncementModal from './Round32AnnouncementModal';
-import Round16AnnouncementModal from './Round16AnnouncementModal';
 import QuarterfinalsAnnouncementModal from './QuarterfinalsAnnouncementModal';
 import './Layout.css';
 
@@ -395,7 +394,6 @@ export default function Layout() {
 
       <LuckyAnnouncementModal />
       <Round32AnnouncementModal />
-      <Round16AnnouncementModal />
       <QuarterfinalsAnnouncementModal />
     </div>
   );
