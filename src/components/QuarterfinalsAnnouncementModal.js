@@ -60,9 +60,9 @@ export default function QuarterfinalsAnnouncementModal() {
         <span className="la-kicker">MATA-MATA DA COPA 2026</span>
         <h2 className="la-title">Quartas de Final chegaram! ⚽</h2>
         <p className="la-text">
-          Só os 8 melhores restam! Palpite nos 4 duelos das Quartas —
-          <strong> França × Marrocos</strong>, <strong>Portugal × Bélgica</strong>,
-          <strong> Noruega × Inglaterra</strong> e <strong>Argentina × Suíça</strong>.
+          Só os 4 melhores duelos restam! Palpite nas Quartas —
+          <strong> França × Marrocos</strong>, <strong>Bélgica × Espanha</strong>,
+          <strong> Noruega × Inglaterra</strong> e <strong>Suíça × Argentina</strong>.
           Cada palpite certo vale pontos no ranking!
         </p>
         <div className="la-kickoff-box">
