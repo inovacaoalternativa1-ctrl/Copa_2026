@@ -5,7 +5,7 @@ import supabase from '../services/supabase';
 import { usePush } from '../hooks/usePush';
 import LuckyAnnouncementModal from './LuckyAnnouncementModal';
 import Round32AnnouncementModal from './Round32AnnouncementModal';
-import QuarterfinalsAnnouncementModal from './QuarterfinalsAnnouncementModal';
+import SemifinalsAnnouncementModal from './SemifinalsAnnouncementModal';
 import './Layout.css';
 
 const getInitials = (name = '') => {
@@ -394,7 +394,7 @@ export default function Layout() {
 
       <LuckyAnnouncementModal />
       <Round32AnnouncementModal />
-      <QuarterfinalsAnnouncementModal />
+      <SemifinalsAnnouncementModal />
     </div>
   );
 }
