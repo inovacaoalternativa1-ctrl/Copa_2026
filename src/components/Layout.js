@@ -3,8 +3,6 @@ import { Outlet, NavLink, useNavigate, Link, useLocation } from 'react-router-do
 import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
 import { usePush } from '../hooks/usePush';
-import LuckyAnnouncementModal from './LuckyAnnouncementModal';
-import Round32AnnouncementModal from './Round32AnnouncementModal';
 import FinalAnnouncementModal from './FinalAnnouncementModal';
 import './Layout.css';
 
@@ -392,8 +390,6 @@ export default function Layout() {
         );
       })()}
 
-      <LuckyAnnouncementModal />
-      <Round32AnnouncementModal />
       <FinalAnnouncementModal />
     </div>
   );
