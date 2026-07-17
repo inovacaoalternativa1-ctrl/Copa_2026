@@ -58,7 +58,12 @@ export default function FinalAnnouncementModal() {
         <button className="la-close" onClick={handleClose}>✕</button>
         <div className="la-trophy">🏆</div>
         <span className="la-kicker">COPA DO MUNDO 2026</span>
-        <h2 className="la-title">É FINAL! 🇪🇸 × 🇦🇷</h2>
+        <h2 className="la-title">
+          É FINAL!{' '}
+          <img src="https://flagcdn.com/w40/es.png" alt="Espanha" style={{height:'1em',verticalAlign:'middle',borderRadius:2}} />
+          {' × '}
+          <img src="https://flagcdn.com/w40/ar.png" alt="Argentina" style={{height:'1em',verticalAlign:'middle',borderRadius:2}} />
+        </h2>
         <p className="la-text">
           A grande decisão chegou! <strong>Espanha × Argentina</strong> se enfrentam
           na final da Copa do Mundo 2026. Faça seu palpite e concorra ao prêmio!
