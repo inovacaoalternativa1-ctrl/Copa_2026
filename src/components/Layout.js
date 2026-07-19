@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
 import { usePush } from '../hooks/usePush';
 import FinalAnnouncementModal from './FinalAnnouncementModal';
+import ChampionCelebration from './ChampionCelebration';
 import './Layout.css';
 
 const getInitials = (name = '') => {
@@ -391,6 +392,7 @@ export default function Layout() {
       })()}
 
       <FinalAnnouncementModal />
+      <ChampionCelebration />
     </div>
   );
 }

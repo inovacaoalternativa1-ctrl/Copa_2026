@@ -1,0 +1,205 @@
+/* ── Overlay ───────────────────────────────────────────────────────────── */
+.champ-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.88);
+  backdrop-filter: blur(6px);
+  animation: champ-fadein 0.4s ease;
+}
+
+@keyframes champ-fadein { from { opacity:0 } to { opacity:1 } }
+
+/* ── Partículas ─────────────────────────────────────────────────────────── */
+.champ-particle-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 10000;
+}
+
+.champ-confetti {
+  position: absolute;
+  top: -20px;
+  animation-fill-mode: forwards;
+  animation-timing-function: linear;
+  transform-origin: center;
+}
+
+@keyframes champ-fall {
+  0%   { transform: translateY(0) translateX(0) rotate(0deg);   opacity: 1; }
+  100% { transform: translateY(110vh) translateX(var(--drift)) rotate(var(--rot)); opacity: 0; }
+}
+
+.champ-spark {
+  position: absolute;
+  transform-origin: center;
+  animation-fill-mode: forwards;
+  animation-timing-function: ease-out;
+}
+
+@keyframes champ-spark {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(calc(cos(var(--ang)) * var(--dist)), calc(sin(var(--ang)) * var(--dist))) scale(0); opacity: 0; }
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────────── */
+.champ-modal {
+  position: relative;
+  z-index: 10001;
+  background: linear-gradient(145deg, #1a0a00 0%, #2d1200 40%, #1a0800 100%);
+  border: 3px solid #F1BF00;
+  border-radius: 24px;
+  padding: 36px 32px 32px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(241,191,0,0.5), 0 0 120px rgba(170,21,27,0.3);
+  animation: champ-popin 0.5s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+
+@keyframes champ-popin {
+  0%   { transform: scale(0.5) rotate(-4deg); opacity:0; }
+  100% { transform: scale(1)   rotate(0deg);  opacity:1; }
+}
+
+.champ-close {
+  position: absolute;
+  top: 14px; right: 16px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  color: #fff;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.champ-close:hover { background: rgba(255,255,255,0.3); }
+
+/* ── Bandeira ───────────────────────────────────────────────────────────── */
+.champ-flag-row { margin-bottom: 4px; }
+.champ-flag {
+  width: 90px;
+  border-radius: 8px;
+  border: 3px solid #F1BF00;
+  box-shadow: 0 0 24px rgba(241,191,0,0.6);
+  animation: champ-pulse 1.5s ease-in-out infinite;
+}
+@keyframes champ-pulse {
+  0%,100% { box-shadow: 0 0 24px rgba(241,191,0,0.6); }
+  50%      { box-shadow: 0 0 48px rgba(241,191,0,1);   }
+}
+
+/* ── Troféu ─────────────────────────────────────────────────────────────── */
+.champ-trophy-row {
+  font-size: 64px;
+  margin: 8px 0 4px;
+  animation: champ-bounce 0.8s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 16px #FFD700);
+}
+@keyframes champ-bounce {
+  from { transform: translateY(0)   scale(1);    }
+  to   { transform: translateY(-8px) scale(1.08); }
+}
+
+/* ── Kicker ─────────────────────────────────────────────────────────────── */
+.champ-kicker {
+  display: inline-block;
+  background: #F1BF00;
+  color: #1a0800;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* ── Título ─────────────────────────────────────────────────────────────── */
+.champ-title {
+  font-size: clamp(28px, 8vw, 40px);
+  font-weight: 900;
+  color: #F1BF00;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  line-height: 1.1;
+  margin: 8px 0 16px;
+  text-shadow: 0 0 20px rgba(241,191,0,0.8), 2px 2px 0 #AA151B;
+  animation: champ-glow 2s ease-in-out infinite alternate;
+}
+@keyframes champ-glow {
+  from { text-shadow: 0 0 20px rgba(241,191,0,0.6), 2px 2px 0 #AA151B; }
+  to   { text-shadow: 0 0 40px rgba(241,191,0,1),   2px 2px 0 #AA151B; }
+}
+
+/* ── Texto ──────────────────────────────────────────────────────────────── */
+.champ-text {
+  color: rgba(255,255,255,0.85);
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+/* ── Placar ─────────────────────────────────────────────────────────────── */
+.champ-score-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(241,191,0,0.3);
+  border-radius: 14px;
+  padding: 12px 20px;
+  margin-bottom: 16px;
+}
+.champ-score-flag {
+  width: 36px;
+  border-radius: 4px;
+}
+.champ-score-text {
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+}
+
+/* ── Estrelas ───────────────────────────────────────────────────────────── */
+.champ-stars {
+  font-size: 22px;
+  color: #F1BF00;
+  letter-spacing: 6px;
+  margin-bottom: 20px;
+  text-shadow: 0 0 10px #F1BF00;
+  animation: champ-glow 1.5s ease-in-out infinite alternate;
+}
+
+/* ── Botão ──────────────────────────────────────────────────────────────── */
+.champ-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #AA151B 0%, #F1BF00 100%);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 900;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 4px 24px rgba(241,191,0,0.4);
+  transition: transform 0.15s, box-shadow 0.15s;
+  animation: champ-btn-pulse 1.2s ease-in-out infinite alternate;
+}
+.champ-btn:hover  { transform: scale(1.03); box-shadow: 0 6px 32px rgba(241,191,0,0.6); }
+.champ-btn:active { transform: scale(0.98); }
+
+@keyframes champ-btn-pulse {
+  from { box-shadow: 0 4px 24px rgba(241,191,0,0.3); }
+  to   { box-shadow: 0 4px 40px rgba(241,191,0,0.7); }
+}
