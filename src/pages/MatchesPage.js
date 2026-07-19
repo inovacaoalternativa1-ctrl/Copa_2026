@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import supabase from '../services/supabase';
 import { syncLiveScores } from '../services/syncScores';
 import { playBrasilSound } from '../hooks/useBrasilSound';
+import WinnersPodium from '../components/WinnersPodium';
 import './MatchesPage.css';
 
 const isBrasilMatch = m => m.team_a === 'Brasil' || m.team_b === 'Brasil';
@@ -115,6 +116,7 @@ export default function MatchesPage() {
 
   return (
     <div className="matches-page">
+      <WinnersPodium />
       <div className="page-header">
         <h1 className="page-title">⚽ Jogos</h1>
         <div className="phase-filter">
