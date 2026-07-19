@@ -1,0 +1,246 @@
+/* ── Overlay ───────────────────────────────────────────────────────────── */
+.pod-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.92);
+  backdrop-filter: blur(8px);
+  animation: pod-fadein 0.4s ease;
+  overflow-y: auto;
+  padding: 16px;
+}
+@keyframes pod-fadein { from { opacity:0 } to { opacity:1 } }
+
+/* ── Partículas ─────────────────────────────────────────────────────────── */
+.pod-particles {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 9999;
+}
+.pod-confetti {
+  position: absolute;
+  top: -24px;
+  animation-fill-mode: forwards;
+}
+@keyframes pod-fall {
+  0%   { transform: translateY(0) translateX(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(115vh) translateX(var(--drift)) rotate(var(--rot)); opacity: 0; }
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────────── */
+.pod-modal {
+  position: relative;
+  z-index: 10000;
+  background: linear-gradient(160deg, #0d1b2a 0%, #12243a 60%, #0a1520 100%);
+  border: 2px solid rgba(255,215,0,0.4);
+  border-radius: 28px;
+  padding: 32px 28px 28px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 0 80px rgba(255,215,0,0.25), 0 20px 60px rgba(0,0,0,0.6);
+  animation: pod-popin 0.55s cubic-bezier(0.175,0.885,0.32,1.275);
+}
+@keyframes pod-popin {
+  0%   { transform: scale(0.6) translateY(40px); opacity: 0; }
+  100% { transform: scale(1)   translateY(0);    opacity: 1; }
+}
+
+.pod-close {
+  position: absolute;
+  top: 14px; right: 16px;
+  background: rgba(255,255,255,0.12);
+  border: none; color: #fff;
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.pod-close:hover { background: rgba(255,255,255,0.28); }
+
+/* ── Header ─────────────────────────────────────────────────────────────── */
+.pod-header { margin-bottom: 24px; }
+
+.pod-trophy {
+  font-size: 56px;
+  filter: drop-shadow(0 0 20px #FFD700);
+  animation: pod-bounce 0.9s ease-in-out infinite alternate;
+}
+@keyframes pod-bounce {
+  from { transform: translateY(0)    scale(1);    }
+  to   { transform: translateY(-7px) scale(1.07); }
+}
+
+.pod-kicker {
+  display: inline-block;
+  background: linear-gradient(90deg, #FFD700, #FFA500);
+  color: #1a0800;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 2.5px;
+  padding: 4px 14px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  margin: 6px 0 10px;
+}
+
+.pod-title {
+  font-size: clamp(22px, 6vw, 30px);
+  font-weight: 900;
+  color: #FFD700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin: 0 0 6px;
+  text-shadow: 0 0 20px rgba(255,215,0,0.7);
+}
+
+.pod-subtitle {
+  color: rgba(255,255,255,0.65);
+  font-size: 13px;
+  margin: 0;
+}
+
+/* ── Pódio ───────────────────────────────────────────────────────────────── */
+.pod-stage {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.pod-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  max-width: 140px;
+}
+
+/* ── Avatar ─────────────────────────────────────────────────────────────── */
+.pod-avatar-wrap {
+  position: relative;
+  margin-bottom: 8px;
+}
+.pod-avatar-img,
+.pod-avatar-initials {
+  width: 62px; height: 62px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 800; color: #fff;
+  border: 3px solid;
+}
+.pod-slot--gold   .pod-avatar-img,
+.pod-slot--gold   .pod-avatar-initials { border-color: #FFD700; background: #3a2800; box-shadow: 0 0 20px rgba(255,215,0,0.6); }
+.pod-slot--silver .pod-avatar-img,
+.pod-slot--silver .pod-avatar-initials { border-color: #C0C0C0; background: #2a2a2a; box-shadow: 0 0 14px rgba(192,192,192,0.4); }
+.pod-slot--bronze .pod-avatar-img,
+.pod-slot--bronze .pod-avatar-initials { border-color: #CD7F32; background: #2a1800; box-shadow: 0 0 14px rgba(205,127,50,0.4); }
+
+.pod-slot--gold .pod-avatar-img,
+.pod-slot--gold .pod-avatar-initials { width: 72px; height: 72px; font-size: 23px; }
+
+.pod-medal-icon {
+  position: absolute;
+  bottom: -4px; right: -6px;
+  font-size: 22px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+}
+.pod-slot--gold .pod-medal-icon { font-size: 26px; }
+
+/* ── Nome e pontos ───────────────────────────────────────────────────────── */
+.pod-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.pod-slot--gold .pod-name { font-size: 15px; color: #FFD700; }
+
+.pod-pts {
+  font-size: 11px;
+  color: rgba(255,255,255,0.55);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.pod-slot--gold .pod-pts { color: rgba(255,215,0,0.8); font-size: 12px; }
+
+/* ── Bloco do pódio ──────────────────────────────────────────────────────── */
+.pod-block {
+  width: 100%;
+  border-radius: 10px 10px 0 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.pod-slot--gold   .pod-block { background: linear-gradient(180deg, #856300 0%, #5a4200 100%); border: 1px solid #FFD700; color: #FFD700; }
+.pod-slot--silver .pod-block { background: linear-gradient(180deg, #5a5a5a 0%, #3a3a3a 100%); border: 1px solid #C0C0C0; color: #C0C0C0; }
+.pod-slot--bronze .pod-block { background: linear-gradient(180deg, #6b3f1e 0%, #4a2a10 100%); border: 1px solid #CD7F32; color: #CD7F32; }
+
+.pod-pos-label { opacity: 0.85; }
+
+/* ── Prêmios ─────────────────────────────────────────────────────────────── */
+.pod-prizes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.pod-prize-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 13px;
+  text-align: left;
+  color: #fff;
+}
+.pod-prize-row span:first-child { font-size: 20px; flex-shrink: 0; }
+
+.pod-prize--gold   { background: rgba(255,215,0,0.12); border: 1px solid rgba(255,215,0,0.3); }
+.pod-prize--silver { background: rgba(192,192,192,0.1); border: 1px solid rgba(192,192,192,0.25); }
+.pod-prize--bronze { background: rgba(205,127,50,0.1); border: 1px solid rgba(205,127,50,0.25); }
+
+/* ── Botão ──────────────────────────────────────────────────────────────── */
+.pod-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #856300 0%, #FFD700 50%, #856300 100%);
+  color: #1a0800;
+  border: none;
+  border-radius: 16px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 900;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 24px rgba(255,215,0,0.35);
+  transition: transform 0.15s, box-shadow 0.15s;
+  animation: pod-btn-glow 1.4s ease-in-out infinite alternate;
+}
+.pod-btn:hover  { transform: scale(1.03); box-shadow: 0 6px 36px rgba(255,215,0,0.55); }
+.pod-btn:active { transform: scale(0.97); }
+@keyframes pod-btn-glow {
+  from { box-shadow: 0 4px 20px rgba(255,215,0,0.3); }
+  to   { box-shadow: 0 4px 40px rgba(255,215,0,0.7); }
+}
+
+.pod-loading { color: rgba(255,255,255,0.5); padding: 32px 0; font-size: 15px; }
