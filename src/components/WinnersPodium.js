@@ -20,9 +20,26 @@ export default function WinnersPodium() {
   const [top3, setTop3] = useState([]);
 
   useEffect(() => {
-    supabase.from('ranking').select('username, total_points, avatar_url, position')
-      .lte('position', 3).order('position')
-      .then(({ data }) => setTop3(data || []));
+    const load = async () => {
+      const { data: rankData } = await supabase
+        .from('ranking')
+        .select('user_id, username, total_points, position')
+        .order('position')
+        .limit(3);
+      if (!rankData || rankData.length === 0) return;
+
+      const ids = rankData.map(r => r.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, avatar_url')
+        .in('id', ids);
+
+      const avatarMap = {};
+      (profiles || []).forEach(p => { avatarMap[p.id] = p.avatar_url; });
+
+      setTop3(rankData.map(r => ({ ...r, avatar_url: avatarMap[r.user_id] || null })));
+    };
+    load();
   }, []);
 
   if (top3.length === 0) return null;
